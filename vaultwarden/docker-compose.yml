@@ -16,6 +16,11 @@ services:
       placement:
         constraints:
           - node.role == manager
+    ports:
+      - target: 80
+        published: 8062
+        protocol: tcp
+        mode: ingress
     environment:
       WEBSOCKET_ENABLED: "true"
       SIGNUPS_ALLOWED: "false"
