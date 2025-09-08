@@ -1,5 +1,5 @@
 tunnel: 53f49069-a8cd-410e-821e-1f2b868cc70f
-credentials-file: /etc/cloudflared/credentials.json
+credentials-file: /etc/cloudflared/53f49069-a8cd-410e-821e-1f2b868cc70f.json
 ingress:
   - hostname: vault.bnitturi.com
     service: http://vw_vaultwarden:80
