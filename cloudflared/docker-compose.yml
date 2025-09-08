@@ -1,26 +1,43 @@
+# Docker Compose configuration for setting up a Cloudflare Tunnel container
+#
+# This configuration pulls the latest Cloudflare Tunnel image from the specified repository
+# and includes options for logging, automatic updates using Watchtower, health checks, and volume mounting.
+
 services:
-  cloudflared:
-    image: cloudflare/cloudflared:latest
-    command: tunnel run
-    deploy:
-      mode: replicated
-      replicas: 1
-      restart_policy:
-        condition: any
-        delay: 5s
-        max_attempts: 3
-        window: 120s
-      placement:
-        constraints: [ "node.role == manager" ]
-    networks: [web]
+
+  # Cloudflare Tunnel Service
+  cloudflare-tunnel:
+    image: cloudflare/cloudflared:latest              # Pull the latest version of the Cloudflare Tunnel image
+    container_name: cloudflare-tunnel                 # Name of the Cloudflare Tunnel container
+    hostname: cloudflare-tunnel                       # Hostname for the Cloudflare Tunnel container
+
+    restart: always                           # Restart the container unless manually stopped
+
+    # Logging configuration for Cloudflare Tunnel container
+    logging:
+      driver: "json-file"                             # Use the default json-file logging driver
+      options:
+        max-size: "100m"                              # Maximum log file size before rotation (100 MB)
+        max-file: "10"                                # Maximum number of log files to retain (10)
+
+    # Network mode configuration
+    network_mode: "host"                              # Use the host network (no isolation between host and container)
+
+    # Command to run Cloudflare Tunnel with debug logging
+    command: tunnel run    # Command to start the Cloudflare tunnel with full debug logging
+
+    # Volume configuration for time synchronization and hosts file persistence
     volumes:
-      - ./config.yml:/etc/cloudflared/config.yml:ro
-    secrets:
-      - source: cf_credentials.json
-        target: /etc/cloudflared/credentials.json
-networks:
-  web:
-    external: true
-secrets:
-  cf_credentials.json:
-    external: true
+      - /etc/localtime:/etc/localtime:ro              # Synchronize time with the host
+      - ./cloudflared/hosts:/etc/hosts                     # Mount hosts file from host to container
+      - /home/bemsnitturi/container-data/cloudflare/cloudflared-auth/53f49069-a8cd-410e-821e-1f2b868cc70f.json:/etc/cloudflared/962319fa-efe8-40ae-a564-38e9fe4b60a0.json:ro
+      - ./cloudflared/config.yml:/etc/cloudflared/config.yml:ro  # Mount Cloudflare Tunnel configuration file
+
+    # Health check configuration to verify Cloudflare Tunnel readiness
+    healthcheck:
+      test: ["CMD", "cloudflared", "--version"]       # Check if cloudflared version command works
+      interval: 30s                                   # Time between health check attempts
+      timeout: 10s                                    # Time to wait for a response
+      retries: 3                                      # Number of retries before marking as unhealthy
+      start_period: 10s                               # Delay before health checks begin
+
