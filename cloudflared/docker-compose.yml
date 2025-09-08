@@ -1,0 +1,26 @@
+services:
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    command: tunnel run
+    deploy:
+      mode: replicated
+      replicas: 1
+      restart_policy:
+        condition: any
+        delay: 5s
+        max_attempts: 3
+        window: 120s
+      placement:
+        constraints: [ "node.role == manager" ]
+    networks: [web]
+    volumes:
+      - ./config.yml:/etc/cloudflared/config.yml:ro
+    secrets:
+      - source: cf_credentials.json
+        target: /etc/cloudflared/credentials.json
+networks:
+  web:
+    external: true
+secrets:
+  cf_credentials.json:
+    external: true
