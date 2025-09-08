@@ -1,0 +1,22 @@
+# secrets / env
+.env
+*.env
+*.key
+*.pem
+*.pfx
+*.crt
+*.jks
+*.asc
+*.gpg
+credentials*.json
+secrets*.json
+
+# runtime data (even if you later bind from ~/container-data)
+**/data/
+**/vw-data/
+**/backups/
+
+# noise
+__pycache__/
+*.swp
+.DS_Store
