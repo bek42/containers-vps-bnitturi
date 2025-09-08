@@ -1,5 +1,5 @@
 tunnel: 53f49069-a8cd-410e-821e-1f2b868cc70f
-credentials-file: /home/bharani/secrets/cloudflared/credentials.json
+credentials-file: /secrets/cloudflared/credentials.json
 ingress:
   - hostname: vault.bnitturi.com
     service: http://vaultwarden:80
