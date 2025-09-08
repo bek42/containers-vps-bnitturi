@@ -30,7 +30,7 @@ services:
     volumes:
       - /etc/localtime:/etc/localtime:ro              # Synchronize time with the host
       - ./cloudflared/hosts:/etc/hosts                     # Mount hosts file from host to container
-      - /home/bemsnitturi/container-data/cloudflare/cloudflared-auth/53f49069-a8cd-410e-821e-1f2b868cc70f.json:/etc/cloudflared/53f49069-a8cd-410e-821e-1f2b868cc70f.json:ro
+      - /home/bharani/secrets/cloudflared/53f49069-a8cd-410e-821e-1f2b868cc70f.json:/etc/cloudflared/53f49069-a8cd-410e-821e-1f2b868cc70f.json:ro
       - ./cloudflared/config.yml:/etc/cloudflared/config.yml:ro  # Mount Cloudflare Tunnel configuration file
 
     # Health check configuration to verify Cloudflare Tunnel readiness
