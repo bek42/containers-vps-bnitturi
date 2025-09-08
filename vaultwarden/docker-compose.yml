@@ -58,7 +58,7 @@ services:
       ZIP_TYPE: zip
     volumes:
       - /home/bharani/container-data/vaultwarden/vw-data/:/vaultwarden-data
-      - vaultwarden-rclone-data:/config/
+      - /home/bharani/container-data/vaultwarden/vw-data/rclone:/config/
     secrets:
       - source: vw_zip_pass
         target: zip_pass
