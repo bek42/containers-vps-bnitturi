@@ -8,7 +8,10 @@ services:
         max_attempts: 3
         window: 120s
     ports:
-      - 8062:80
+      - target: 80
+        published: 8062
+        protocol: tcp
+        mode: host
     environment:
       WEBSOCKET_ENABLED: "true"
       SIGNUPS_ALLOWED: "false"
