@@ -1,0 +1,14 @@
+services:
+  portainer:
+    image: portainer/portainer-ce:latest
+    container_name: portainer
+    restart: always
+    # Bind to loopback only -> not exposed on public IP
+    ports:
+      - "127.0.0.1:9000:9000"
+      # - "127.0.0.1:9443:9443"   # not needed for this test
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /home/bharani/container-data/portainer/data:/data
+    security_opt:
+      - no-new-privileges:true

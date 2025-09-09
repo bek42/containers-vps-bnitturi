@@ -5,3 +5,8 @@ ingress:
     path: /safe/bems2304/*
     service: http://localhost:8062
   - service: http_status:404
+
+ingress:
+  - hostname: portainer.bnitturi.com
+    service: http://localhost:9000
+  - service: http_status:404
