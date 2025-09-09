@@ -2,12 +2,6 @@
 #
 # This configuration pulls the latest Cloudflare Tunnel image from the specified repository
 # and includes options for logging, automatic updates using Watchtower, health checks, and volume mounting.
-
-networks:
-  edge-net:
-    name: edge-net
-    driver: bridge
-
 services:
 
   # Cloudflare Tunnel Service
@@ -26,10 +20,8 @@ services:
         max-file: "10"                                # Maximum number of log files to retain (10)
 
     # Network mode configuration
-    # network_mode: "host"                              # Use the host network (no isolation between host and container)
-    networks:
-      - edge-net
-
+    network_mode: "host"                              # Use the host network (no isolation between host and container)
+    
     # Command to run Cloudflare Tunnel with debug logging
     command: tunnel run    # Command to start the Cloudflare tunnel with full debug logging
 

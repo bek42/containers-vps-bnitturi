@@ -1,18 +1,12 @@
-networks:
-  edge-net:
-    name: edge-net
-    driver: bridge
-
 services:
   portainer:
     image: portainer/portainer-ce:latest
     container_name: portainer
     restart: unless-stopped
-    # No ports published!
+    ports:
+      - "127.0.0.1:9000:9000"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - /home/bharani/container-data/portainer/data:/data
-    networks:
-      - edge-net
     security_opt:
       - no-new-privileges:true
