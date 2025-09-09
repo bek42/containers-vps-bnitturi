@@ -1,7 +1,6 @@
 networks:
   edge-net:
-    name: edge-net
-    driver: bridge
+    external: true
 
 services:
   vaultwarden:
