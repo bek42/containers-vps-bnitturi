@@ -3,7 +3,7 @@ credentials-file: /etc/cloudflared/53f49069-a8cd-410e-821e-1f2b868cc70f.json
 
 ingress:
   - hostname: portainer.bnitturi.com
-    service: http://localhost:9000
+    service: http://portainer:9000
 
   - hostname: vault.bnitturi.com
     path: /safe/bems2304/*
