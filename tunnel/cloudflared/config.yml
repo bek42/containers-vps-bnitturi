@@ -7,6 +7,6 @@ ingress:
 
   - hostname: vault.bnitturi.com
     path: /safe/bems2304/*
-    service: http://localhost:8062
+    service: http://vaultwarden:8062
 
   - service: http_status:404
