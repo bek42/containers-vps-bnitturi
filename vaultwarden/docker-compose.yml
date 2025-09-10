@@ -1,10 +1,12 @@
-version: "3.9"
-
 services:
   vaultwarden:
     image: vaultwarden/server:1.34.3
-    container_name: vaultwarden
-    restart: unless-stopped
+    deploy:
+      restart_policy:
+        condition: any
+        delay: 5s
+        max_attempts: 3
+        window: 120s
     ports:
       - target: 80
         published: 8062
@@ -16,7 +18,7 @@ services:
       INVITATIONS_ALLOWED: "false"
       LOGIN_RATELIMIT_MAX_BURST: "10"
       LOGIN_RATELIMIT_SECONDS: "60"
-      DOMAIN_FILE: /run/secrets/vw_domain_url
+      DOMAIN_FILE: /run/secrets/vw_domain_root_url
       ADMIN_TOKEN_FILE: /run/secrets/vw_admin_token
       SMTP_HOST_FILE: /run/secrets/vw_smtp_host
       SMTP_PORT_FILE: /run/secrets/vw_smtp_port
@@ -28,12 +30,15 @@ services:
     volumes:
       - /home/bharani/container-data/vaultwarden/vw-data/:/data/
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1/api/version >/dev/null 2>&1 || exit 1"]
+      test: ["CMD-SHELL", "wget -qO- \
+        --header='Host: vault.bnitturi.com' \
+        --header='X-Forwarded-Proto: https' \
+        http://127.0.0.1/safe/bems2304/alive >/dev/null 2>&1 || exit 1"]
       interval: 30s
       timeout: 5s
       retries: 5
     secrets:
-      - vw_domain_url
+      - vw_domain_root_url
       - vw_admin_token
       - vw_smtp_host
       - vw_smtp_port
@@ -42,8 +47,12 @@ services:
 
   vw-backup:
     image: ttionya/vaultwarden-backup:1.25.1
-    container_name: vw-backup
-    restart: unless-stopped
+    deploy:
+      restart_policy:
+        condition: any
+        delay: 5s
+        max_attempts: 3
+        window: 120s
     environment:
       DATA_DIR: /vaultwarden-data
       BACKUP_KEEP_DAYS: "30"
@@ -61,7 +70,7 @@ services:
         target: zip_pass
 
 secrets:
-  vw_domain_url:  { external: true }
+  vw_domain_root_url:  { external: true }
   vw_admin_token: { external: true }
   vw_smtp_host:   { external: true }
   vw_smtp_port:   { external: true }
