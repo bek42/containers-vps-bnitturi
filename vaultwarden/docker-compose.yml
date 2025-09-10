@@ -29,14 +29,6 @@ services:
       SMTP_TIMEOUT: "30"
     volumes:
       - /home/bharani/container-data/vaultwarden/vw-data/:/data/
-    healthcheck:
-      test: ["CMD-SHELL", "wget -qO- \
-        --header='Host: vault.bnitturi.com' \
-        --header='X-Forwarded-Proto: https' \
-        http://127.0.0.1/alive >/dev/null 2>&1 || exit 1"]
-      interval: 30s
-      timeout: 5s
-      retries: 5
     secrets:
       - vw_domain_root_url
       - vw_admin_token
