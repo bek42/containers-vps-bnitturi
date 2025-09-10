@@ -15,7 +15,7 @@ services:
     restart: unless-stopped
 
   migration:
-    image: simplelogin/app:v4.36.6
+    image: simplelogin/app:4.6.5-beta
     container_name: sl-migration
     command: ["alembic", "upgrade", "head"]
     env_file:
@@ -32,7 +32,7 @@ services:
     restart: "no"
 
   init:
-    image: simplelogin/app:v4.36.6
+    image: simplelogin/app:4.6.5-beta
     container_name: sl-init
     command: ["python", "init_app.py"]
     env_file:
@@ -49,7 +49,7 @@ services:
     restart: "no"
 
   app:
-    image: simplelogin/app:v4.36.6
+    image: simplelogin/app:4.6.5-beta
     container_name: sl-app
     env_file:
       - /home/bharani/containers/gmailit/.env
@@ -68,7 +68,7 @@ services:
     restart: unless-stopped
 
   email:
-    image: simplelogin/app:v4.36.6
+    image: simplelogin/app:4.6.5-beta
     container_name: sl-email
     command: ["python", "email_handler.py"]
     env_file:
@@ -85,7 +85,7 @@ services:
     restart: unless-stopped
 
   job-runner:
-    image: simplelogin/app:v4.36.6
+    image: simplelogin/app:4.6.5-beta
     container_name: sl-job-runner
     command: ["python", "job_runner.py"]
     env_file:
