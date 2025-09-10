@@ -18,7 +18,7 @@ services:
       INVITATIONS_ALLOWED: "false"
       LOGIN_RATELIMIT_MAX_BURST: "10"
       LOGIN_RATELIMIT_SECONDS: "60"
-      DOMAIN_FILE: /run/secrets/vw_domain_root_url
+      DOMAIN_FILE: /run/secrets/vw_domain_url
       ADMIN_TOKEN_FILE: /run/secrets/vw_admin_token
       SMTP_HOST_FILE: /run/secrets/vw_smtp_host
       SMTP_PORT_FILE: /run/secrets/vw_smtp_port
@@ -30,7 +30,7 @@ services:
     volumes:
       - /home/bharani/container-data/vaultwarden/vw-data/:/data/
     secrets:
-      - vw_domain_root_url
+      - vw_domain_url
       - vw_admin_token
       - vw_smtp_host
       - vw_smtp_port
@@ -62,7 +62,7 @@ services:
         target: zip_pass
 
 secrets:
-  vw_domain_root_url:  { external: true }
+  vw_domain_url:  { external: true }
   vw_admin_token: { external: true }
   vw_smtp_host:   { external: true }
   vw_smtp_port:   { external: true }
