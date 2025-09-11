@@ -5,7 +5,7 @@ services:
       restart_policy:
         condition: any
         delay: 5s
-        max_attempts: 3
+        max_attempts: 0
         window: 120s
     ports:
       - target: 80
@@ -36,6 +36,13 @@ services:
       - vw_smtp_port
       - vw_email
       - vw_email_pass
+    healthcheck:
+      # IMPORTANT: probe includes your sub-path
+      test: ["CMD", "wget", "--spider", "-q", "http://127.0.0.1/safe/bems2304/alive"]
+      interval: 30s
+      timeout: 3s
+      retries: 5
+      start_period: 40s
 
   vw-backup:
     image: ttionya/vaultwarden-backup:1.25.1
