@@ -13,7 +13,7 @@ services:
         protocol: tcp
         mode: host
     environment:
-      WEBSOCKET_ENABLED: "true"
+      # WEBSOCKET_ENABLED: "true"
       SIGNUPS_ALLOWED: "false"
       INVITATIONS_ALLOWED: "false"
       LOGIN_RATELIMIT_MAX_BURST: "10"
