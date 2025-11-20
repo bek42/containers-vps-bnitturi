@@ -1,0 +1,48 @@
+secrets:
+  DB_RT:
+    file: /home/bharani/secrets/ngix_maria_db_rt
+  DB:
+    file: /home/bharani/secrets/ngix_maria_db
+services:
+  app:
+    image: 'jc21/nginx-proxy-manager:2.13.4'
+    restart: always
+    container_name: nginx
+    secrets:
+      - DB
+    ports:
+      # These ports are in format <host-port>:<container-port>
+      - '80:80' # Public HTTP Port
+      - '443:443' # Public HTTPS Port
+      - '81:81' # Admin Web Port
+      # Add any other Stream port you want to expose
+      # - '21:21' # FTP
+    environment:
+      DB_MYSQL_HOST: "db"
+      DB_MYSQL_PORT: 3306
+      DB_MYSQL_USER: "bharani"
+      DB_MYSQL_PASSWORD__FILE: /run/secrets/DB
+      DB_MYSQL_NAME: "npm"
+      # Uncomment this if IPv6 is not enabled on your host
+      # DISABLE_IPV6: 'true'
+    volumes:
+      - /home/bharani/container-data/ngnix/data:/data
+      - /home/bharani/container-data/ngnix/letsencrypt:/etc/letsencrypt
+      - /var/log/nginx:/var/log/nginx
+    depends_on:
+      - db
+
+  db:
+    image: 'jc21/mariadb-aria:10.11.5'
+    container_name: mariadb
+    secrets:
+      - DB_RT
+      - DB
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD__FILE: /run/secrets/DB_RT
+      MYSQL_DATABASE: 'npm'
+      MYSQL_USER: 'bharani'
+      MYSQL_PASSWORD__FILE: /run/secrets/DB
+    volumes:
+      - /home/bharani/container-data/ngnix/mariadb-aria/data/mysql:/var/lib/mysql
