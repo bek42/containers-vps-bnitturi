@@ -1,0 +1,35 @@
+version: "3.9"
+
+services:
+  registry:
+    image: registry:3.0
+    container_name: registry
+    restart: always
+    ports:
+      - "5000:5000"
+    volumes:
+      - /home/bharani/container-data/registry/data:/var/lib/registry
+      - /home/bharani/containers/registry/config.yml:/etc/docker/registry/config.yml
+      - /home/bharani/container-data/registry/auth:/auth
+
+  registry-ui:
+    image: joxit/docker-registry-ui:main
+    container_name: registry-ui
+    restart: always
+    ports:
+      - "8002:80"
+    env_file:
+      - /home/bharani/secrets/registry-ui.env
+    environment:
+      - SINGLE_REGISTRY=true
+      - REGISTRY_TITLE=Docker Registry UI
+      - DELETE_IMAGES=true
+      - SHOW_CONTENT_DIGEST=true
+      - NGINX_PROXY_PASS_URL=http://registry:5000
+      - SHOW_CATALOG_NB_TAGS=true
+      - CATALOG_MIN_BRANCHES=1
+      - CATALOG_MAX_BRANCHES=1
+      - TAGLIST_PAGE_SIZE=100
+      - REGISTRY_SECURED=true
+      - REGISTRY_AUTH=basic
+      - CATALOG_ELEMENTS_LIMIT=1000

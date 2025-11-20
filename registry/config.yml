@@ -1,0 +1,22 @@
+version: 0.1
+
+log:
+  level: info
+
+storage:
+  filesystem:
+    rootdirectory: /var/lib/registry
+    maxthreads: 100
+  delete:
+    enabled: true
+
+http:
+  addr: :5000
+  secret: "change-this-to-a-long-random-string"
+  headers:
+    X-Content-Type-Options: [nosniff]
+
+auth:
+  htpasswd:
+    realm: "Registry Realm"
+    path: /auth/htpasswd
