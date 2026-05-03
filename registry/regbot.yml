@@ -17,16 +17,19 @@ scripts:
       platforms = { "linux/amd64", "linux/arm64", "linux/arm/v7" }
 
       function get_created(ref)
-        -- try without platform first (works for single-arch images)
+        -- Try direct image.config first (works for single-arch images)
         local ok, ic = pcall(image.config, ref)
         if ok and ic and ic.Created then
           return ic.Created
         end
-        -- fall back to trying common platforms (for multi-arch manifest lists)
+        -- Fallback: explicitly get manifest for a platform, then its config
         for _, p in ipairs(platforms) do
-          ok, ic = pcall(image.config, ref, p)
-          if ok and ic and ic.Created then
-            return ic.Created
+          local mok, m = pcall(manifest.get, ref, p)
+          if mok and m then
+            local cok, c = pcall(function() return m:config() end)
+            if cok and c and c.Created then
+              return c.Created
+            end
           end
         end
         return nil
