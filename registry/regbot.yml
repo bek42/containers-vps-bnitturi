@@ -14,6 +14,23 @@ scripts:
     script: |
       keep_count = 2
       protected = { ["latest"] = true, ["stable"] = true, ["main"] = true }
+      platforms = { "linux/amd64", "linux/arm64", "linux/arm/v7" }
+
+      function get_created(ref)
+        -- try without platform first (works for single-arch images)
+        local ok, ic = pcall(image.config, ref)
+        if ok and ic and ic.Created then
+          return ic.Created
+        end
+        -- fall back to trying common platforms (for multi-arch manifest lists)
+        for _, p in ipairs(platforms) do
+          ok, ic = pcall(image.config, ref, p)
+          if ok and ic and ic.Created then
+            return ic.Created
+          end
+        end
+        return nil
+      end
 
       repos = repo.ls("registry:5000")
       for _, r in ipairs(repos) do
@@ -24,9 +41,9 @@ scripts:
         for _, t in ipairs(tags) do
           if not protected[t] then
             ref:tag(t)
-            ok, ic = pcall(image.config, ref)
-            if ok and ic and ic.Created then
-              table.insert(candidates, {tag = t, created = ic.Created})
+            local created = get_created(ref)
+            if created then
+              table.insert(candidates, {tag = t, created = created})
             else
               log("WARN: could not read config for " .. r .. ":" .. t)
             end
@@ -35,7 +52,6 @@ scripts:
 
         log("Repo " .. r .. ": " .. #tags .. " total tags, " .. #candidates .. " candidates for cleanup")
 
-        -- newest first
         table.sort(candidates, function(a, b) return a.created > b.created end)
 
         for i = keep_count + 1, #candidates do
