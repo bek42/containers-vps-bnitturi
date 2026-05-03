@@ -12,16 +12,36 @@ scripts:
   - name: cleanup old tags
     timeout: 60m
     script: |
+      keep_count = 2
+      protected = { ["latest"] = true, ["stable"] = true, ["main"] = true }
+
       repos = repo.ls("registry:5000")
       for _, r in ipairs(repos) do
         ref = reference.new("registry:5000/" .. r)
         tags = tag.ls(ref)
-        if #tags > 2 then
-          table.sort(tags)
-          for i = 1, #tags - 2 do
-            t = reference.new("registry:5000/" .. r .. ":" .. tags[i])
-            tag.delete(t)
-            log("Deleted: " .. r .. ":" .. tags[i])
+
+        -- build list of {tag, created_time}, skipping protected tags
+        candidates = {}
+        for _, t in ipairs(tags) do
+          if not protected[t] then
+            tagRef = reference.new("registry:5000/" .. r .. ":" .. t)
+            ok, m = pcall(manifest.get, tagRef)
+            if ok then
+              ok2, c = pcall(image.config, m)
+              if ok2 and c.Config and c.Config.Created then
+                table.insert(candidates, {tag = t, created = c.Config.Created})
+              end
+            end
           end
+        end
+
+        -- sort newest first
+        table.sort(candidates, function(a, b) return a.created > b.created end)
+
+        -- delete everything past keep_count
+        for i = keep_count + 1, #candidates do
+          delRef = reference.new("registry:5000/" .. r .. ":" .. candidates[i].tag)
+          tag.delete(delRef)
+          log("Deleted: " .. r .. ":" .. candidates[i].tag)
         end
       end
