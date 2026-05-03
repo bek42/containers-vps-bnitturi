@@ -20,28 +20,27 @@ scripts:
         ref = reference.new("registry:5000/" .. r)
         tags = tag.ls(ref)
 
-        -- build list of {tag, created_time}, skipping protected tags
         candidates = {}
         for _, t in ipairs(tags) do
           if not protected[t] then
-            tagRef = reference.new("registry:5000/" .. r .. ":" .. t)
-            ok, m = pcall(manifest.get, tagRef)
-            if ok then
-              ok2, c = pcall(image.config, m)
-              if ok2 and c.Config and c.Config.Created then
-                table.insert(candidates, {tag = t, created = c.Config.Created})
-              end
+            ref:tag(t)
+            ok, ic = pcall(image.config, ref)
+            if ok and ic and ic.Created then
+              table.insert(candidates, {tag = t, created = ic.Created})
+            else
+              log("WARN: could not read config for " .. r .. ":" .. t)
             end
           end
         end
 
-        -- sort newest first
+        log("Repo " .. r .. ": " .. #tags .. " total tags, " .. #candidates .. " candidates for cleanup")
+
+        -- newest first
         table.sort(candidates, function(a, b) return a.created > b.created end)
 
-        -- delete everything past keep_count
         for i = keep_count + 1, #candidates do
-          delRef = reference.new("registry:5000/" .. r .. ":" .. candidates[i].tag)
-          tag.delete(delRef)
-          log("Deleted: " .. r .. ":" .. candidates[i].tag)
+          ref:tag(candidates[i].tag)
+          tag.delete(ref)
+          log("Deleted: " .. r .. ":" .. candidates[i].tag .. " (created " .. candidates[i].created .. ")")
         end
       end
