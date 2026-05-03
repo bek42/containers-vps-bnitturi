@@ -1,12 +1,11 @@
-cat > /home/bharani/containers/registry/regbot.yml << 'EOF'
 creds:
   - registry: registry:5000
     tls: disabled
-    user: "{{env \"REGBOT_USER\"}}"
-    pass: "{{env \"REGBOT_PASS\"}}"
+    user: "{{env "REGBOT_USER"}}"
+    pass: "{{env "REGBOT_PASS"}}"
 
 defaults:
-  interval: 168h  # run weekly
+  interval: 168h
 
 scripts:
   - name: cleanup old tags
@@ -25,4 +24,3 @@ scripts:
           end
         end
       end
-EOF
