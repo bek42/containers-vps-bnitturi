@@ -17,12 +17,10 @@ scripts:
       platforms = { "linux/amd64", "linux/arm64", "linux/arm/v7" }
 
       function get_created(ref)
-        -- Try direct image.config first (works for single-arch images)
         local ok, ic = pcall(image.config, ref)
         if ok and ic and ic.Created then
           return ic.Created
         end
-        -- Fallback: explicitly get manifest for a platform, then its config
         for _, p in ipairs(platforms) do
           local mok, m = pcall(manifest.get, ref, p)
           if mok and m then
@@ -40,26 +38,49 @@ scripts:
         ref = reference.new("registry:5000/" .. r)
         tags = tag.ls(ref)
 
-        candidates = {}
+        with_dates = {}
+        without_dates = {}
         for _, t in ipairs(tags) do
           if not protected[t] then
             ref:tag(t)
             local created = get_created(ref)
             if created then
-              table.insert(candidates, {tag = t, created = created})
+              table.insert(with_dates, {tag = t, created = created})
             else
-              log("WARN: could not read config for " .. r .. ":" .. t)
+              table.insert(without_dates, t)
             end
           end
         end
 
-        log("Repo " .. r .. ": " .. #tags .. " total tags, " .. #candidates .. " candidates for cleanup")
+        -- newest dates first
+        table.sort(with_dates, function(a, b) return a.created > b.created end)
+        -- alphabetical descending (so semver "0.16.0" sorts before "0.9.0" alphabetically — not perfect but ok)
+        table.sort(without_dates, function(a, b) return a > b end)
 
-        table.sort(candidates, function(a, b) return a.created > b.created end)
+        log("Repo " .. r .. ": " .. #tags .. " total tags, " .. #with_dates .. " with dates, " .. #without_dates .. " without dates")
 
-        for i = keep_count + 1, #candidates do
-          ref:tag(candidates[i].tag)
-          tag.delete(ref)
-          log("Deleted: " .. r .. ":" .. candidates[i].tag .. " (created " .. candidates[i].created .. ")")
+        -- delete from with_dates first (date-based decision is more reliable),
+        -- then from without_dates if we still need to delete more
+        local total_candidates = #with_dates + #without_dates
+        local to_delete = total_candidates - keep_count
+        if to_delete <= 0 then
+          goto continue
         end
+
+        -- iterate combined list (dated first kept, then undated) from end
+        local combined = {}
+        for _, c in ipairs(with_dates) do
+          table.insert(combined, {tag = c.tag, info = c.created})
+        end
+        for _, t in ipairs(without_dates) do
+          table.insert(combined, {tag = t, info = "no-date"})
+        end
+
+        for i = keep_count + 1, #combined do
+          ref:tag(combined[i].tag)
+          tag.delete(ref)
+          log("Deleted: " .. r .. ":" .. combined[i].tag .. " (" .. combined[i].info .. ")")
+        end
+
+        ::continue::
       end
