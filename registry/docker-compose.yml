@@ -10,6 +10,18 @@ services:
       - /home/bharani/containers/registry/config.yml:/etc/docker/registry/config.yml
       - /home/bharani/container-data/registry/auth:/auth
 
+  regbot:
+      image: regclient/regbot:latest
+      container_name: regbot
+      restart: always
+      env_file:
+        - /home/bharani/secrets/registry-regbot.env
+      volumes:
+        - /home/bharani/containers/registry/regbot.yml:/home/appuser/regbot.yml
+      command: -c /home/appuser/regbot.yml server
+      networks:
+        - default
+
   registry-ui:
     image: joxit/docker-registry-ui:main
     container_name: registry-ui

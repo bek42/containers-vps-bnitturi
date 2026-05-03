@@ -1,0 +1,28 @@
+cat > /home/bharani/containers/registry/regbot.yml << 'EOF'
+creds:
+  - registry: registry:5000
+    tls: disabled
+    user: "{{env \"REGBOT_USER\"}}"
+    pass: "{{env \"REGBOT_PASS\"}}"
+
+defaults:
+  interval: 168h  # run weekly
+
+scripts:
+  - name: cleanup old tags
+    timeout: 60m
+    script: |
+      repos = repo.ls("registry:5000")
+      for _, r in ipairs(repos) do
+        ref = reference.new("registry:5000/" .. r)
+        tags = tag.ls(ref)
+        if #tags > 2 then
+          table.sort(tags)
+          for i = 1, #tags - 2 do
+            t = reference.new("registry:5000/" .. r .. ":" .. tags[i])
+            tag.delete(t)
+            log("Deleted: " .. r .. ":" .. tags[i])
+          end
+        end
+      end
+EOF
