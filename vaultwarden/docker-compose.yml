@@ -1,6 +1,6 @@
 services:
   vaultwarden:
-    image: vaultwarden/server:1.35.4
+    image: vaultwarden/server:1.36.0
     deploy:
       restart_policy:
         condition: any
@@ -44,7 +44,7 @@ services:
       start_period: 20s
 
   vw-backup:
-    image: ttionya/vaultwarden-backup:1.26.3
+    image: ttionya/vaultwarden-backup:1.26.8
     deploy:
       restart_policy:
         condition: any
