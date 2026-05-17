@@ -14,4 +14,7 @@ ingress:
     originRequest:
       httpHostHeader: app.gmailit.com
 
+  - hostname: secrets.bnitturi.com
+    service: http://localhost:8080
+
   - service: http_status:404
