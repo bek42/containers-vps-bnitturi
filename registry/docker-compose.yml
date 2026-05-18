@@ -3,8 +3,6 @@ services:
     image: registry:3.0
     container_name: registry
     restart: always
-    ports:
-      - "5000:5000"
     volumes:
       - /home/bharani/container-data/registry/data:/var/lib/registry
       - /home/bharani/containers/registry/config.yml:/etc/docker/registry/config.yml
