@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(Get-ChildItem \"c:\\\\energy\\\\containers-vps-bnitturi\" -Recurse -Force | Where-Object { !$_.PSIsContainer } | Select-Object FullName)",
+      "Bash(docker compose *)",
+      "Bash(echo \"EXIT: $?\")",
+      "Bash(docker context *)",
+      "Bash(ssh bnitturi *)",
+      "Bash(git push *)",
+      "Bash(curl -s -o /dev/null -w '%{http_code}\\\\n' https://reg.greatsky.co.uk/v2/)"
+    ]
+  }
+}

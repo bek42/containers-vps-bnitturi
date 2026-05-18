@@ -5,7 +5,7 @@ secrets:
     file: /home/bharani/secrets/ngix_maria_db
 services:
   app:
-    image: 'jc21/nginx-proxy-manager:2.13.4'
+    image: 'jc21/nginx-proxy-manager:2.14.0'
     restart: always
     container_name: nginx
     secrets:
