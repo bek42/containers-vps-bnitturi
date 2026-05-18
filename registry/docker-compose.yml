@@ -9,6 +9,9 @@ services:
       - /home/bharani/container-data/registry/data:/var/lib/registry
       - /home/bharani/containers/registry/config.yml:/etc/docker/registry/config.yml
       - /home/bharani/container-data/registry/auth:/auth
+    networks:
+      - default
+      - shared-proxy
 
   regbot:
       image: regclient/regbot:latest
@@ -43,3 +46,7 @@ services:
       - REGISTRY_SECURED=true
       - REGISTRY_AUTH=basic
       - CATALOG_ELEMENTS_LIMIT=1000
+
+networks:
+  shared-proxy:
+    external: true

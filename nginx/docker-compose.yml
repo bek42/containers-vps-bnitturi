@@ -31,6 +31,9 @@ services:
       - /var/log/nginx:/var/log/nginx
     depends_on:
       - db
+    networks:
+      - default
+      - shared-proxy
 
   db:
     image: 'jc21/mariadb-aria:10.11.5'
@@ -46,3 +49,7 @@ services:
       MYSQL_PASSWORD__FILE: /run/secrets/DB
     volumes:
       - /home/bharani/container-data/ngnix/mariadb-aria/data/mysql:/var/lib/mysql
+
+networks:
+  shared-proxy:
+    name: shared-proxy
