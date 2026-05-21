@@ -1,8 +1,8 @@
 secrets:
   DB_RT:
-    file: /home/bharani/secrets/ngix_maria_db_rt
+    file: ./ngix_maria_db_rt
   DB:
-    file: /home/bharani/secrets/ngix_maria_db
+    file: ./ngix_maria_db
 services:
   app:
     image: 'jc21/nginx-proxy-manager:2.14.0'

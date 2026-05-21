@@ -1,0 +1,3 @@
+# plaintext secrets - decrypted from .age files, never committed
+ngix_maria_db
+ngix_maria_db_rt
