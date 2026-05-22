@@ -12,8 +12,12 @@ services:
     restart: unless-stopped
     ports:
       - "127.0.0.1:8080:8080"
-    env_file:
-      - ./infisical.env
+    environment:
+      - DB_CONNECTION_URI
+      - REDIS_URL
+      - ENCRYPTION_KEY
+      - AUTH_SECRET
+      - SITE_URL
     depends_on:
       - infisical-redis
     healthcheck:
