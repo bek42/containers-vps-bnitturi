@@ -1,50 +1,80 @@
-# Infisical
+# infisical
 
-Self-hosted secrets manager. Exposed at `https://secrets.bnitturi.com` via Cloudflare tunnel.
+Self-hosted secrets manager. Exposed at `https://v0u1t.bnitturi.com` via Cloudflare tunnel.
 
 ## Services
 
-- `infisical/infisical` — Web UI + API on port 8080
-- `redis:7-alpine` — Queue and cache backend
+| Service (compose) | Image | Purpose |
+|---|---|---|
+| `infisical` | `infisical/infisical` | Web UI + API on port 8080 |
+| `redis`     | `redis:7-alpine` | Queue and cache backend |
 
-Database is hosted on **Neon** (free tier, no maintenance required).
+PostgreSQL is hosted externally on **Neon** (free tier, no maintenance).
 
-## First-time setup
+## Secrets
+
+Single sops-encrypted file: `infisical.env`. Contents:
+
+| Key | Encrypted | Notes |
+|---|---|---|
+| `DB_CONNECTION_URI` | yes | Neon Postgres connection string |
+| `REDIS_URL`         | yes | `redis://infisical-redis:6379` |
+| `ENCRYPTION_KEY`    | yes | 32-char hex — encrypts stored secrets |
+| `AUTH_SECRET`       | yes | 32-char hex — signs session JWTs |
+| `SITE_URL`          | no  | Plain via `.sops.yaml` (`unencrypted_regex`) |
+
+Variable names stay readable in git; values are AES-encrypted. Safe to commit.
+
+Edit with `make edit`.
+
+## Operations
 
 ```bash
-# Create data directory
-mkdir -p /home/bharani/container-data/infisical/redis
-
-# Create secrets file (never commit this)
-cat > /home/bharani/secrets/infisical.env << 'EOF'
-DB_CONNECTION_URI=<neon-connection-string>
-REDIS_URL=redis://infisical-redis:6379
-ENCRYPTION_KEY=<32-char-hex>
-AUTH_SECRET=<32-char-hex>
-SITE_URL=https://secrets.bnitturi.com
-EOF
-
-# Generate keys if needed
-openssl rand -hex 16  # run twice — one for ENCRYPTION_KEY, one for AUTH_SECRET
-
-# Deploy
-docker compose up -d
+make up        # sops exec-env infisical.env 'docker compose up -d'
+make down      # docker compose down
+make restart   # down + up
+make edit      # sops edit infisical.env
 ```
+
+**Always go through `make up`.** A direct `docker compose up -d` starts the containers with empty env vars and infisical aborts at startup with `AUTH_SECRET: undefined`.
 
 ## Upgrade
 
 ```bash
 docker compose pull
-docker compose up -d
+make restart
 ```
 
-## Check status
+## Status
 
 ```bash
 docker compose ps
 docker compose logs infisical
+docker compose logs redis
 ```
 
-## Secrets file location
+## Data
 
-`/home/bharani/secrets/infisical.env` — not in git
+- `~/container-data/infisical/redis` — Redis persistence (AOF/RDB)
+
+Application data lives in Neon, not on this host. Local backups aren't needed for Postgres state — Neon handles that.
+
+## Recovery on a new host
+
+1. Install `age`, `sops`, `make`, `docker`, `docker compose`.
+2. Place age private key at `~/.config/age/keys.txt` (chmod 600).
+3. Symlink: `mkdir -p ~/.config/sops/age && ln -s ~/.config/age/keys.txt ~/.config/sops/age/keys.txt`.
+4. Clone repo, `cd infisical`.
+5. `make up`.
+
+Because Postgres is on Neon, infisical re-connects to the same DB and picks up where it left off. No local restore step.
+
+## Rotating keys
+
+```bash
+openssl rand -hex 16   # generate; run twice if rotating both
+make edit              # paste new value(s)
+make restart
+```
+
+**Warning**: rotating `ENCRYPTION_KEY` after secrets exist in the DB makes them unreadable. Only rotate it on a fresh install, or with a planned re-encryption migration. `AUTH_SECRET` is safe to rotate at any time — only effect is invalidating existing sessions (users log in again).
