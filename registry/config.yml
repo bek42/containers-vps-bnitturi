@@ -12,11 +12,5 @@ storage:
 
 http:
   addr: :5000
-  secret: "change-this-to-a-long-random-string"
   headers:
     X-Content-Type-Options: [nosniff]
-
-auth:
-  htpasswd:
-    realm: "Registry Realm"
-    path: /auth/htpasswd

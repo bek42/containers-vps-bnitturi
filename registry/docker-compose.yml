@@ -5,32 +5,27 @@ services:
     restart: always
     volumes:
       - /home/bharani/container-data/registry/data:/var/lib/registry
-      - /home/bharani/containers/registry/config.yml:/etc/docker/registry/config.yml
-      - /home/bharani/container-data/registry/auth:/auth
+      - /home/bharani/containers/registry/config.yml:/etc/distribution/config.yml
     networks:
       - default
       - shared-proxy
 
   regbot:
-      image: regclient/regbot:latest
-      container_name: regbot
-      restart: always
-      env_file:
-        - /home/bharani/secrets/registry-regbot.env
-      volumes:
-        - /home/bharani/containers/registry/regbot.yml:/home/appuser/regbot.yml
-      command: -c /home/appuser/regbot.yml server
-      networks:
-        - default
+    image: regclient/regbot:latest
+    container_name: regbot
+    restart: always
+    volumes:
+      - /home/bharani/containers/registry/regbot.yml:/home/appuser/regbot.yml
+    command: -c /home/appuser/regbot.yml server
+    networks:
+      - default
 
   registry-ui:
     image: joxit/docker-registry-ui:main
     container_name: registry-ui
     restart: always
     ports:
-      - "8002:80"
-    env_file:
-      - /home/bharani/secrets/registry-ui.env
+      - "127.0.0.1:8002:80"
     environment:
       - SINGLE_REGISTRY=true
       - REGISTRY_TITLE=Docker Registry UI
@@ -41,8 +36,6 @@ services:
       - CATALOG_MIN_BRANCHES=1
       - CATALOG_MAX_BRANCHES=1
       - TAGLIST_PAGE_SIZE=100
-      - REGISTRY_SECURED=true
-      - REGISTRY_AUTH=basic
       - CATALOG_ELEMENTS_LIMIT=1000
 
 networks:

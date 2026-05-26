@@ -1,217 +1,123 @@
-# Docker Registry with Automated Cleanup
+# registry
 
-A self-hosted Docker registry with web UI and automated tag cleanup. Designed to be portable across VPSs — clone the repo, set credentials, run two commands.
+Self-hosted Docker registry with web UI and automated tag cleanup. Reachable at `https://reg.greatsky.co.uk` via Cloudflare tunnel → NPM.
 
-## What this does
+## Services
 
-- **Registry** (port 5000) — private Docker image registry with htpasswd auth
-- **Registry UI** (port 8002) — web interface for browsing images
-- **Regbot** — automated cleanup that runs weekly, keeping only the 2 most recent tags per repo (plus `latest`/`stable`/`main` always)
-- **GC cron** — Sunday 3am, reclaims actual disk space after tag deletions
+| Service (compose) | Container | Image | Purpose |
+|---|---|---|---|
+| `registry`    | `registry`    | `registry:3.0`                  | OCI-compliant image registry |
+| `registry-ui` | `registry-ui` | `joxit/docker-registry-ui:main` | Web interface for browsing |
+| `regbot`      | `regbot`      | `regclient/regbot:latest`       | Weekly automated tag cleanup |
 
-## Files
+## Auth model
 
-```
-registry/
-├── README.md           ← this file
-├── docker-compose.yml  ← all 3 services
-├── config.yml          ← registry config (auth, storage, etc.)
-├── regbot.yml          ← cleanup script (Lua-based)
-├── gc.sh               ← garbage collection script (run by cron)
-└── setup.sh            ← one-time bootstrap for new VPS
-```
+Authentication happens **at NPM** (Access List: `dockerhub`), not at the registry itself. The registry has no native auth configured.
 
-## Setup on a new VPS
+Consequences:
+- One auth dialog per `docker login reg.greatsky.co.uk`
+- Internal services (regbot, registry-ui) reach `registry:5000` over the docker network without auth
+- User management lives in the NPM admin UI, not in htpasswd files
 
-### 1. Clone the repo
+Defense-in-depth via dual-layer auth is intentionally skipped — single user, single homelab, simpler operations.
 
-```bash
-git clone <your-repo> /home/bharani/containers
-cd /home/bharani/containers/registry
-```
+## Ports
 
-### 2. Create the htpasswd file
+- **5000** — registry HTTP. Not published to the host; only reachable via the docker network and via NPM through `shared-proxy`.
+- **8002** — registry-ui. Bound to `127.0.0.1:8002` only; access via NPM proxy host or SSH tunnel.
 
-The registry needs a username/password for pushing images. Generate one:
+## Networks
 
-```bash
-mkdir -p /home/bharani/container-data/registry/auth
-docker run --rm --entrypoint htpasswd httpd:2 -Bbn youruser yourpassword \
-  > /home/bharani/container-data/registry/auth/htpasswd
-```
+- `default` — three services connected so regbot and registry-ui can resolve `registry:5000` by name
+- `shared-proxy` (external) — only the registry service is on this; NPM proxies `reg.greatsky.co.uk` to it
 
-### 3. Create the secrets files (NOT in git)
-
-**Registry UI credentials:**
-```bash
-mkdir -p /home/bharani/secrets
-cat > /home/bharani/secrets/registry-ui.env << 'EOF'
-NGINX_PROXY_HEADER_Authorization=Basic <base64-of-user:pass>
-EOF
-```
-
-(To generate the base64: `echo -n 'youruser:yourpassword' | base64`)
-
-**Regbot credentials:**
-```bash
-cat > /home/bharani/secrets/registry-regbot.env << 'EOF'
-REGBOT_USER=youruser
-REGBOT_PASS=yourpassword
-EOF
-```
-
-### 4. Run setup (installs the GC cron)
+## Operations
 
 ```bash
-sudo bash setup.sh
+make up        # docker compose up -d
+make down      # docker compose down
+make restart   # down + up
 ```
 
-### 5. Start everything
+This stack has no secrets — no sops, no encrypted env file. All configuration lives in plain YAML in this directory.
+
+## Pushing images
 
 ```bash
-docker compose up -d
+docker login reg.greatsky.co.uk      # uses NPM access list creds
+docker tag myapp:latest reg.greatsky.co.uk/myapp:v1
+docker push reg.greatsky.co.uk/myapp:v1
 ```
 
-### 6. Verify
+For the automated login flow see the `docker-registry.env` / `make login` pattern at the repo root.
 
-```bash
-docker compose ps                              # all 3 should be Up
-curl -u youruser:yourpassword http://localhost:5000/v2/_catalog   # should list repos
-docker logs regbot                             # should be quiet (server mode)
-```
+## Tag cleanup
 
-## How the cleanup works
-
-**regbot.yml** is a Lua script that runs every 168 hours (7 days) inside the regbot container. For each repo it:
+`regbot` runs the Lua script in `regbot.yml` every 168h. For each repo it:
 
 1. Lists all tags
 2. Skips protected tags: `latest`, `stable`, `main`
 3. Reads each tag's image creation timestamp
-4. For tags **with** a creation date: keeps the 2 newest by date
-5. For tags **without** a date (multi-arch/buildx images): falls back to alphabetical sort
-6. Deletes everything beyond the keep limit
+4. Keeps the 2 newest dated tags; falls back to alphabetical for tags without a date (multi-arch buildx images)
+5. Deletes everything else
 
-**gc.sh** is a shell script triggered by cron every Sunday at 3am. It runs the registry's built-in garbage collector to reclaim disk space from deleted manifests.
+Tag deletion alone doesn't free disk space — only references. `gc.sh` (cron'd Sunday 3am) runs the registry's garbage collector to reclaim storage.
 
-**Important:** Tag deletion alone doesn't free disk space — it only removes references. The GC step is what actually reclaims storage. The two-step design is intentional: tag deletion is safe to run anytime, GC needs more care.
-
-## Manual operations
-
-### Force a cleanup run now
+### Manual operations
 
 ```bash
+# Force a cleanup run now:
 docker compose run --rm regbot -c /home/appuser/regbot.yml once
-```
 
-### Dry-run (see what would be deleted, no changes)
-
-```bash
+# Dry-run:
 docker compose run --rm regbot -c /home/appuser/regbot.yml once --dry-run
-```
 
-### Force garbage collection now
+# Force GC now:
+docker exec registry registry garbage-collect --delete-untagged /etc/distribution/config.yml
 
-```bash
-docker exec registry registry garbage-collect --delete-untagged \
-  /etc/docker/registry/config.yml
-```
-
-### Check disk usage
-
-```bash
-df -h /
+# Disk usage:
 du -sh /home/bharani/container-data/registry/
+
+# List repos / tags:
+curl -u USER:PASS https://reg.greatsky.co.uk/v2/_catalog
+curl -u USER:PASS https://reg.greatsky.co.uk/v2/<repo>/tags/list
 ```
 
-### Check what's stored
+## Recovery on a new host
 
-```bash
-# List all repos
-curl -u youruser:yourpassword http://localhost:5000/v2/_catalog
+1. Install `make`, `docker`, `docker compose`.
+2. Clone repo, `cd registry`.
+3. Restore `~/container-data/registry/data/` from backup if you want to keep existing images.
+4. `sudo make install-cron`.
+5. `make up`.
 
-# List tags for a repo
-curl -u youruser:yourpassword http://localhost:5000/v2/<repo>/tags/list
-```
+Data dir is the only state. Auth lives in the NPM stack — restore that volume separately.
 
-## Configuration
+## Tuning
 
-### Change retention count
+`regbot.yml`:
 
-Edit `regbot.yml`:
 ```lua
-keep_count = 2   -- change to whatever you want
+keep_count = 2                                                       -- retention
+protected = { ["latest"] = true, ["stable"] = true, ["main"] = true } -- never-delete tags
 ```
 
-Then commit and `docker compose restart regbot`.
-
-### Add more protected tag names
-
-Edit `regbot.yml`:
-```lua
-protected = { ["latest"] = true, ["stable"] = true, ["main"] = true, ["prod"] = true }
-```
-
-### Change cleanup frequency
-
-Edit `regbot.yml`:
 ```yaml
 defaults:
-  interval: 168h   # weekly. Use 24h for daily, 720h for monthly, etc.
+  interval: 168h   # 24h for daily, 720h for monthly
 ```
 
-## Pushing images to the registry
-
-From any machine with Docker:
-
-```bash
-docker login <vps-host>:5000 -u youruser -p yourpassword
-docker tag myimage:latest <vps-host>:5000/myimage:v1
-docker push <vps-host>:5000/myimage:v1
-```
-
-If using HTTP (not HTTPS), add this to `/etc/docker/daemon.json` on the client:
-```json
-{
-  "insecure-registries": ["<vps-host>:5000"]
-}
-```
-
-Then `sudo systemctl restart docker`.
+Then `make restart`.
 
 ## Troubleshooting
 
-### Regbot logs are empty
-
-Server mode is silent until the next scheduled run. Force a one-time run to verify:
+**regbot logs are empty.** Server mode is silent until the next scheduled run. Force a one-time run:
 ```bash
 docker compose run --rm regbot -c /home/appuser/regbot.yml once
 ```
 
-### Registry is full / out of disk
+**"could not read config" for some tags.** Multi-arch buildx images don't have a single creation timestamp. The script falls back to alphabetical sort for these — expected, not a problem.
 
-Run cleanup + GC manually:
-```bash
-docker compose run --rm regbot -c /home/appuser/regbot.yml once
-docker exec registry registry garbage-collect --delete-untagged \
-  /etc/docker/registry/config.yml
-```
+**Registry won't delete tags (405).** Verify `config.yml` has `storage.delete.enabled: true`.
 
-### Cleanup says "could not read config" for some tags
-
-This is fine — it happens with multi-arch images built by `docker buildx`. The script falls back to sorting by tag name for these.
-
-### Registry won't delete (returns 405)
-
-Make sure `config.yml` has:
-```yaml
-storage:
-  delete:
-    enabled: true
-```
-
-## Architecture notes
-
-- All persistent data lives in `/home/bharani/container-data/registry/` (data + auth)
-- Config lives in `/home/bharani/containers/registry/` (in git)
-- Secrets live in `/home/bharani/secrets/` (NOT in git)
-- The three containers share Docker's default network so regbot can reach `registry:5000` by service name
+**403 in browser, 401 from CLI.** The 401 is correct — `docker login` once and the CLI works. A browser 403 usually means the NPM Access List has `Satisfy: All` with `0 Rules`; set Satisfy to `Any` or add an `allow 0.0.0.0/0` rule.

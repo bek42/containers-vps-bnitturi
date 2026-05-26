@@ -2,8 +2,6 @@ version: 1
 creds:
   - registry: registry:5000
     tls: disabled
-    user: "{{env \"REGBOT_USER\"}}"
-    pass: "{{env \"REGBOT_PASS\"}}"
 
 defaults:
   interval: 168h
