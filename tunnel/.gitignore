@@ -1,0 +1,2 @@
+# Plaintext cloudflared credential — encrypted .json.age version is committed
+cloudflared/*.json
