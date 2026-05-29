@@ -1,14 +1,21 @@
 COMPOSE := docker compose -f simple-login-compose.yaml
+SOPS    := sops exec-env simplelogin.env
 
-.PHONY: up down restart edit
+.PHONY: up down restart edit ps logs
 
 up:
-	sops exec-env simplelogin.env '$(COMPOSE) up -d'
+	$(SOPS) '$(COMPOSE) up -d'
 
 down:
-	$(COMPOSE) down
+	$(SOPS) '$(COMPOSE) down'
 
 restart: down up
 
 edit:
 	sops edit simplelogin.env
+
+ps:
+	$(SOPS) '$(COMPOSE) ps'
+
+logs:
+	$(SOPS) '$(COMPOSE) logs --tail 30 -f'
