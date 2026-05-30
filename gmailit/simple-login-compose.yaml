@@ -1,3 +1,9 @@
+# YAML anchor: the SimpleLogin secret env vars passed through from sops exec-env
+x-sl-secret-env: &sl-secret-env
+  - POSTGRES_PASSWORD
+  - FLASK_SECRET
+  - DB_URI
+
 services:
   postfix:
     image: private/postfix:latest
@@ -5,20 +11,15 @@ services:
       context: /home/bharani/containers/gmailit/postfix/Dockerfiles
       dockerfile: Dockerfile
     container_name: postfix
-    # Postfix on gmailit used .env only for generic vars; we don't need secrets here
     env_file:
       - /home/bharani/containers/gmailit/.env
     environment:
       MAIL_CONFIG: /etc/postfix/conf.d/
     ports:
-      # Expose like the old server. If you don't want them public, remove these.
       - "25:25"
       - "587:587"
     volumes:
-      # Postfix configs from container-data (read-write to allow lmdb map generation)
       - /home/bharani/container-data/gmailit/postfix/conf.d:/etc/postfix/conf.d:rw
-
-      # ACME certs in container-data (read-only)
       - /home/bharani/container-data/gmailit/acme.sh/conf.d:/etc/acme.sh:ro
     depends_on:
       email:
@@ -30,7 +31,7 @@ services:
     container_name: sl-db
     env_file:
       - /home/bharani/containers/gmailit/.env
-      - /home/bharani/secrets/simplelogin.env
+    environment: *sl-secret-env
     healthcheck:
       test: ["CMD", "pg_isready"]
       interval: 10s
@@ -46,7 +47,7 @@ services:
     command: ["alembic", "upgrade", "head"]
     env_file:
       - /home/bharani/containers/gmailit/.env
-      - /home/bharani/secrets/simplelogin.env
+    environment: *sl-secret-env
     volumes:
       - /home/bharani/container-data/gmailit/pgp:/sl/pgp
       - /home/bharani/container-data/gmailit/upload:/code/static/upload
@@ -63,7 +64,7 @@ services:
     command: ["python", "init_app.py"]
     env_file:
       - /home/bharani/containers/gmailit/.env
-      - /home/bharani/secrets/simplelogin.env
+    environment: *sl-secret-env
     volumes:
       - /home/bharani/container-data/gmailit/pgp:/sl/pgp
       - /home/bharani/container-data/gmailit/upload:/code/static/upload
@@ -79,13 +80,12 @@ services:
     container_name: sl-app
     env_file:
       - /home/bharani/containers/gmailit/.env
-      - /home/bharani/secrets/simplelogin.env
+    environment: *sl-secret-env
     volumes:
       - /home/bharani/container-data/gmailit/pgp:/sl/pgp
       - /home/bharani/container-data/gmailit/upload:/code/static/upload
       - /home/bharani/container-data/gmailit/secrets/dkim.key:/dkim.key:ro
       - /home/bharani/container-data/gmailit/secrets/dkim.pub.key:/dkim.pub.key:ro
-    # Expose only to localhost; Cloudflare tunnel will proxy to this
     ports:
       - "127.0.0.1:7777:7777"
     depends_on:
@@ -99,7 +99,7 @@ services:
     command: ["python", "email_handler.py"]
     env_file:
       - /home/bharani/containers/gmailit/.env
-      - /home/bharani/secrets/simplelogin.env
+    environment: *sl-secret-env
     volumes:
       - /home/bharani/container-data/gmailit/pgp:/sl/pgp
       - /home/bharani/container-data/gmailit/upload:/code/static/upload
@@ -116,7 +116,7 @@ services:
     command: ["python", "job_runner.py"]
     env_file:
       - /home/bharani/containers/gmailit/.env
-      - /home/bharani/secrets/simplelogin.env
+    environment: *sl-secret-env
     volumes:
       - /home/bharani/container-data/gmailit/pgp:/sl/pgp
       - /home/bharani/container-data/gmailit/upload:/code/static/upload

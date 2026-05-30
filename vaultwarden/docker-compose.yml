@@ -1,41 +1,26 @@
 services:
   vaultwarden:
     image: vaultwarden/server:1.36.0
-    deploy:
-      restart_policy:
-        condition: any
-        delay: 5s
-        max_attempts: 0
-        window: 120s
+    container_name: vaultwarden
+    restart: always
     ports:
-      - target: 80
-        published: 8062
-        protocol: tcp
-        mode: host
+      - "127.0.0.1:8062:80"
     environment:
-      # WEBSOCKET_ENABLED: "true"
       SIGNUPS_ALLOWED: "true"
       INVITATIONS_ALLOWED: "false"
       LOGIN_RATELIMIT_MAX_BURST: "10"
       LOGIN_RATELIMIT_SECONDS: "60"
-      DOMAIN_FILE: /run/secrets/vw_domain_url
-      ADMIN_TOKEN_FILE: /run/secrets/vw_admin_token
-      SMTP_HOST_FILE: /run/secrets/vw_smtp_host
-      SMTP_PORT_FILE: /run/secrets/vw_smtp_port
-      SMTP_FROM_FILE: /run/secrets/vw_email
-      SMTP_USERNAME_FILE: /run/secrets/vw_email
-      SMTP_PASSWORD_FILE: /run/secrets/vw_email_pass
+      DOMAIN: ${VW_DOMAIN}
+      ADMIN_TOKEN: ${VW_ADMIN_TOKEN}
+      SMTP_HOST: ${VW_SMTP_HOST}
+      SMTP_PORT: ${VW_SMTP_PORT}
+      SMTP_FROM: ${VW_EMAIL}
+      SMTP_USERNAME: ${VW_EMAIL}
+      SMTP_PASSWORD: ${VW_EMAIL_PASS}
       SMTP_AUTH_MECHANISM: Plain
       SMTP_TIMEOUT: "30"
     volumes:
       - /home/bharani/container-data/vaultwarden/vw-data/:/data/
-    secrets:
-      - vw_domain_url
-      - vw_admin_token
-      - vw_smtp_host
-      - vw_smtp_port
-      - vw_email
-      - vw_email_pass
     healthcheck:
       test: ["CMD-SHELL", "curl -fsS http://127.0.0.1/safe/bems2304/alive >/dev/null || exit 1"]
       interval: 30s
@@ -45,12 +30,8 @@ services:
 
   vw-backup:
     image: ttionya/vaultwarden-backup:1.26.8
-    deploy:
-      restart_policy:
-        condition: any
-        delay: 5s
-        max_attempts: 3
-        window: 120s
+    container_name: vw-backup
+    restart: unless-stopped
     environment:
       DATA_DIR: /vaultwarden-data
       BACKUP_KEEP_DAYS: "30"
@@ -58,20 +39,8 @@ services:
       RCLONE_REMOTE_DIR: /VaultwardenBackup/
       CRON: "5 5 * * *"
       ZIP_ENABLE: "TRUE"
-      ZIP_PASSWORD_FILE: /run/secrets/zip_pass
+      ZIP_PASSWORD: ${VW_ZIP_PASS}
       ZIP_TYPE: zip
     volumes:
       - /home/bharani/container-data/vaultwarden/vw-data/:/vaultwarden-data
       - /home/bharani/container-data/vaultwarden/vw-data/rclone:/config/
-    secrets:
-      - source: vw_zip_pass
-        target: zip_pass
-
-secrets:
-  vw_domain_url:  { external: true }
-  vw_admin_token: { external: true }
-  vw_smtp_host:   { external: true }
-  vw_smtp_port:   { external: true }
-  vw_email:       { external: true }
-  vw_email_pass:  { external: true }
-  vw_zip_pass:    { external: true }
