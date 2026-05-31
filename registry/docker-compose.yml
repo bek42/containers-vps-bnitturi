@@ -5,7 +5,7 @@ services:
     restart: always
     volumes:
       - /home/bharani/container-data/registry/data:/var/lib/registry
-      - /home/bharani/containers/registry/config.yml:/etc/distribution/config.yml
+      - ./config.yml:/etc/distribution/config.yml
     networks:
       - default
       - shared-proxy
@@ -15,7 +15,7 @@ services:
     container_name: regbot
     restart: always
     volumes:
-      - /home/bharani/containers/registry/regbot.yml:/home/appuser/regbot.yml
+      - ./regbot.yml:/home/appuser/regbot.yml
     command: -c /home/appuser/regbot.yml server
     networks:
       - default

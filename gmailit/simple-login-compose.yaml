@@ -8,11 +8,11 @@ services:
   postfix:
     image: private/postfix:latest
     build:
-      context: /home/bharani/containers/gmailit/postfix/Dockerfiles
+      context: ./postfix/Dockerfiles
       dockerfile: Dockerfile
     container_name: postfix
     env_file:
-      - /home/bharani/containers/gmailit/.env
+      - ./.env
     environment:
       MAIL_CONFIG: /etc/postfix/conf.d/
     ports:
@@ -30,7 +30,7 @@ services:
     image: postgres:12.1
     container_name: sl-db
     env_file:
-      - /home/bharani/containers/gmailit/.env
+      - ./.env
     environment: *sl-secret-env
     healthcheck:
       test: ["CMD", "pg_isready"]
@@ -46,7 +46,7 @@ services:
     container_name: sl-migration
     command: ["alembic", "upgrade", "head"]
     env_file:
-      - /home/bharani/containers/gmailit/.env
+      - ./.env
     environment: *sl-secret-env
     volumes:
       - /home/bharani/container-data/gmailit/pgp:/sl/pgp
@@ -63,7 +63,7 @@ services:
     container_name: sl-init
     command: ["python", "init_app.py"]
     env_file:
-      - /home/bharani/containers/gmailit/.env
+      - ./.env
     environment: *sl-secret-env
     volumes:
       - /home/bharani/container-data/gmailit/pgp:/sl/pgp
@@ -79,7 +79,7 @@ services:
     image: simplelogin/app:4.6.5-beta
     container_name: sl-app
     env_file:
-      - /home/bharani/containers/gmailit/.env
+      - ./.env
     environment: *sl-secret-env
     volumes:
       - /home/bharani/container-data/gmailit/pgp:/sl/pgp
@@ -98,7 +98,7 @@ services:
     container_name: sl-email
     command: ["python", "email_handler.py"]
     env_file:
-      - /home/bharani/containers/gmailit/.env
+      - ./.env
     environment: *sl-secret-env
     volumes:
       - /home/bharani/container-data/gmailit/pgp:/sl/pgp
@@ -115,7 +115,7 @@ services:
     container_name: sl-job-runner
     command: ["python", "job_runner.py"]
     env_file:
-      - /home/bharani/containers/gmailit/.env
+      - ./.env
     environment: *sl-secret-env
     volumes:
       - /home/bharani/container-data/gmailit/pgp:/sl/pgp

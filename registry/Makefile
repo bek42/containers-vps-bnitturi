@@ -9,6 +9,6 @@ down:
 restart: down up
 
 install-cron:
-	@echo '0 3 * * 0 root /home/bharani/containers/registry/gc.sh' \
+	@echo "0 3 * * 0 root $(PWD)/gc.sh" \
 	  | sudo tee /etc/cron.d/registry-gc > /dev/null
 	@echo "Installed: /etc/cron.d/registry-gc"
