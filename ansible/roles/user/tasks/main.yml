@@ -1,0 +1,55 @@
+---
+- name: Create user {{ vps_user }}
+  ansible.builtin.user:
+    name: "{{ vps_user }}"
+    shell: /bin/bash
+    create_home: true
+    state: present
+
+- name: Grant {{ vps_user }} passwordless sudo
+  ansible.builtin.copy:
+    content: "{{ vps_user }} ALL=(ALL) NOPASSWD:ALL\n"
+    dest: "/etc/sudoers.d/{{ vps_user }}"
+    mode: '0440'
+    validate: 'visudo -cf %s'
+
+- name: Install control-node SSH public key
+  ansible.posix.authorized_key:
+    user: "{{ vps_user }}"
+    state: present
+    key: "{{ lookup('file', ssh_pubkey_path) }}"
+
+# The old box's key lets it rsync-push directly to this host during restore.yml.
+- name: Install old-box SSH public key (used by restore.yml synchronize push)
+  ansible.posix.authorized_key:
+    user: "{{ vps_user }}"
+    state: present
+    key: "{{ lookup('file', old_box_pubkey_path) }}"
+
+# On socket-activated Ubuntu (22.04+), ssh.socket owns the listening port and
+# completely ignores the Port directive in sshd_config / sshd_config.d — the
+# socket is created by systemd before sshd even starts, so sshd never calls
+# bind(). Disabling the socket hands port-binding back to ssh.service, which
+# then reads Port {{ ssh_port }} from the drop-in written below.
+- name: Disable ssh.socket so ssh.service binds the port from sshd_config.d
+  ansible.builtin.systemd_service:
+    name: ssh.socket
+    enabled: false
+    state: stopped
+  ignore_errors: true   # absent on non-socket-activated systems; safe to skip
+
+- name: Ensure ssh.service is enabled (will bind Port {{ ssh_port }} on next start)
+  ansible.builtin.systemd_service:
+    name: ssh
+    enabled: true
+  notify: restart sshd
+
+- name: Write sshd hardening drop-in (port, no-root-login, no-password-auth)
+  ansible.builtin.copy:
+    content: |
+      Port {{ ssh_port }}
+      PermitRootLogin no
+      PasswordAuthentication no
+    dest: /etc/ssh/sshd_config.d/99-hardening.conf
+    mode: '0644'
+  notify: restart sshd

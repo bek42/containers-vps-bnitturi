@@ -1,0 +1,67 @@
+---
+# VPS migration playbook — run this BEFORE deploy.yml.
+#
+# Play 1  (old_vps) db_dump role  — stops stacks, creates SQL dumps, stops blob stacks
+# Play 2  (new_vps) transfer      — rsyncs dumps + container-data over the Tailscale network
+# Play 3  (new_vps) db_restore    — loads dumps, waits for healthy DB, brings up every stack
+#
+# Usage:
+#   ansible-playbook restore.yml
+#
+# Prerequisites on both hosts:
+#   - sops + age key at ~/.config/age/keys.txt
+#   - docker + docker compose v2
+#   - make
+#   - rsync (for ansible.posix.synchronize)
+#   - The repo checked out at /home/bharani/containers/
+
+- name: Play 1 – Dump databases on old_vps
+  hosts: old_vps
+  gather_facts: false
+  become: false
+  roles:
+    - db_dump
+
+# ── Transfer ──────────────────────────────────────────────────────────────────
+# synchronize mode=push delegate_to=old_vps: rsync runs on old_vps and pushes
+# directly to new_vps (the play target) over the Tailscale network.
+# No data ever touches the Ansible control machine.
+- name: Transfer – Sync dumps and container-data old_vps → new_vps
+  hosts: new_vps
+  gather_facts: false
+  become: false
+  tasks:
+    - name: Sync dumps directory old_vps → new_vps
+      ansible.posix.synchronize:
+        src: "{{ dumps_dir }}/"
+        dest: "{{ dumps_dir }}/"
+        mode: push
+        rsync_opts:
+          - "--mkpath"
+      delegate_to: old_vps
+
+    - name: Sync container-data old_vps → new_vps
+      # EXCLUDES: the relational DB data dirs are migrated via dump/restore
+      # (db_dump → db_restore), NOT by copying their on-disk files. Copying them
+      # here too would start each DB on the OLD data and then restore a dump on
+      # top of it → "database already exists" / duplicated state. Let these dirs
+      # be created empty so the DB initialises fresh and the dump populates it.
+      # vaultwarden (sqlite) and registry (blobs) are NOT excluded — those ARE
+      # the cold-copy stacks and must sync.
+      ansible.posix.synchronize:
+        src: "{{ container_data_dir }}/"
+        dest: "{{ container_data_dir }}/"
+        mode: push
+        delete: false    # never remove data that may already exist on new_vps
+        rsync_opts:
+          - "--mkpath"
+          - "--exclude=/gmailit/db"            # postgres (sl-db) → via pg_dumpall
+          - "--exclude=/ngnix/mariadb-aria"    # mariadb (nginx)  → via mariadb-dump
+      delegate_to: old_vps
+
+- name: Play 2 – Restore databases on new_vps
+  hosts: new_vps
+  gather_facts: false
+  become: false
+  roles:
+    - db_restore

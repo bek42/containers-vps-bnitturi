@@ -1,0 +1,43 @@
+---
+- name: Ensure /etc/apt/keyrings directory exists
+  ansible.builtin.file:
+    path: /etc/apt/keyrings
+    state: directory
+    mode: '0755'
+
+- name: Add Docker GPG key
+  ansible.builtin.shell:
+    cmd: >-
+      curl -fsSL https://download.docker.com/linux/ubuntu/gpg
+      | gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+    creates: /etc/apt/keyrings/docker.gpg
+
+# Targets x86_64 / amd64 VPS — adjust arch if deploying on arm64.
+- name: Add Docker apt repository
+  ansible.builtin.apt_repository:
+    repo: >-
+      deb [arch=amd64 signed-by=/etc/apt/keyrings/docker.gpg]
+      https://download.docker.com/linux/ubuntu
+      {{ ansible_distribution_release }} stable
+    filename: docker
+    state: present
+
+- name: Install docker-ce and compose plugin
+  ansible.builtin.apt:
+    name:
+      - docker-ce
+      - docker-ce-cli
+      - containerd.io
+      - docker-buildx-plugin
+      - docker-compose-plugin
+    state: present
+    update_cache: true
+
+- name: Add {{ vps_user }} to docker group
+  ansible.builtin.user:
+    name: "{{ vps_user }}"
+    groups: docker
+    append: true
+  # NOTE: group membership takes effect only on the NEXT login.
+  # deploy.yml uses a separate SSH session (new_vps, not new_vps_raw),
+  # so bharani's docker access is active by then.

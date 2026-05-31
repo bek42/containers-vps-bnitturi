@@ -1,0 +1,19 @@
+---
+# age {{ age_version }} — https://github.com/FiloSottile/age
+- name: Install pinned age {{ age_version }}
+  ansible.builtin.shell:
+    cmd: >-
+      curl -fsSL
+      https://github.com/FiloSottile/age/releases/download/v{{ age_version }}/age-v{{ age_version }}-linux-amd64.tar.gz
+      | tar -xz -C /tmp
+      && install -m 0755 /tmp/age/age /usr/local/bin/age
+      && install -m 0755 /tmp/age/age-keygen /usr/local/bin/age-keygen
+    creates: /usr/local/bin/age
+
+# sops {{ sops_version }} — https://github.com/getsops/sops
+- name: Install pinned sops {{ sops_version }}
+  ansible.builtin.get_url:
+    url: "https://github.com/getsops/sops/releases/download/v{{ sops_version }}/sops-v{{ sops_version }}.linux.amd64"
+    dest: /usr/local/bin/sops
+    mode: '0755'
+    force: false   # skip download if file already exists

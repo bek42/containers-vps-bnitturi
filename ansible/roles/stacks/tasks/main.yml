@@ -1,0 +1,26 @@
+---
+# Start every stack except tunnel in the declared order.
+# nginx must come first (it creates the shared-proxy Docker network that
+# registry and other stacks join as external).
+# make up is idempotent — stacks already running are untouched.
+- name: Start stacks (nginx-first order, tunnel excluded)
+  ansible.builtin.command:
+    cmd: make up
+    chdir: "{{ containers_dir }}/{{ item }}"
+  loop: "{{ stack_order | difference(['tunnel']) }}"
+  loop_control:
+    label: "{{ item }}"
+
+# The Cloudflare tunnel credential is a unique secret — only one cloudflared
+# instance can hold it at a time. Stop the old instance before the new one
+# starts, or the new container will fail to authenticate.
+- name: Stop cloudflared on old_vps before new tunnel claims the credential
+  ansible.builtin.command:
+    cmd: docker compose -f {{ containers_dir }}/tunnel/docker-compose.yml stop
+    chdir: "{{ containers_dir }}/tunnel"
+  delegate_to: old_vps
+
+- name: Start tunnel stack
+  ansible.builtin.command:
+    cmd: make up
+    chdir: "{{ containers_dir }}/tunnel"

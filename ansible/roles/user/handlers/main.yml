@@ -1,0 +1,6 @@
+---
+- name: restart sshd
+  ansible.builtin.service:
+    # ssh.socket is disabled by this point; restarting ssh.service binds Port {{ ssh_port }}.
+    name: ssh
+    state: restarted

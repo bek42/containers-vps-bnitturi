@@ -1,0 +1,12 @@
+---
+# Phase 4 – Bring up all stacks on new_vps in the correct order.
+# Runs as bharani (docker group active on this fresh login session).
+# make up is idempotent — stacks already started by restore.yml are left running.
+# nginx first (creates shared-proxy network); tunnel last (cloudflared is unique).
+
+- name: Deploy all stacks on new_vps
+  hosts: new_vps
+  gather_facts: false
+  become: false
+  roles:
+    - stacks

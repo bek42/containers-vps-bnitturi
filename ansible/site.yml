@@ -1,0 +1,16 @@
+---
+# Full migration site playbook — imports all phases in the correct order.
+#
+# Run order:
+#   1. bootstrap-tailscale  (new_vps_raw, root over public IP)
+#   2. bootstrap            (new_vps_raw, root — provisions the host, hardens SSH)
+#   3. restore              (old_vps + new_vps, bharani via Tailscale — migrates data)
+#   4. deploy               (new_vps, bharani:2281 via Tailscale — starts all stacks)
+#
+# Typically you run each phase separately (see README.md).
+# This file lets you re-run the full sequence in one shot once inventory is filled in.
+
+- import_playbook: bootstrap-tailscale.yml
+- import_playbook: bootstrap.yml
+- import_playbook: restore.yml
+- import_playbook: deploy.yml

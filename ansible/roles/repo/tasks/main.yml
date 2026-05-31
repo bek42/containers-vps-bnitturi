@@ -1,0 +1,13 @@
+---
+# Clones as bharani so that file ownership is correct for `make up` (no sudo needed).
+# Requires either:
+#   a) A GitHub deploy key at ~/.ssh/id_ed25519 for the bharani user, OR
+#   b) SSH agent forwarding (add ForwardAgent yes + the repo key to the control-node agent).
+- name: Clone containers repo to {{ containers_dir }}
+  ansible.builtin.git:
+    repo: "{{ repo_url }}"
+    dest: "{{ containers_dir }}"
+    version: "{{ repo_branch }}"
+    accept_hostkey: true
+  become: true
+  become_user: "{{ vps_user }}"
