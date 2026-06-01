@@ -79,19 +79,17 @@ ssh_port:  2281
 swap_file: /swapfile
 swap_size: 2G
 
-# Supply these with -e at runtime — never commit real values:
-age_key_src:         CHANGEME   # local path to age private key
-ssh_pubkey_path:     CHANGEME   # local path to control-node SSH public key
-old_box_pubkey_path: CHANGEME   # local path to old box's bharani SSH public key (for restore rsync)
-tailscale_authkey:   CHANGEME   # ephemeral one-time Tailscale auth key
+# Default to standard control-node paths; override with -e if your layout differs.
+age_key_src:         "{{ lookup('env','HOME') }}/.config/age/keys.txt"
+ssh_pubkey_path:     "{{ lookup('env','HOME') }}/.ssh/id_ed25519.pub"
+old_box_pubkey_path: "{{ lookup('env','HOME') }}/.ssh/old_box.pub"
 
 # Infisical connection vars (used by the repo role to fetch the GitHub deploy key).
-# Supply infisical_client_id and infisical_client_secret with -e at runtime — never commit.
+# infisical_client_id, infisical_client_secret, and tailscale_authkey live in
+# group_vars/all/secrets.sops.yaml (sops/age-encrypted, auto-loaded by community.sops).
 infisical_domain:     CHANGEME   # e.g. https://infisical.<domain> — the OLD box, pre-cutover
 infisical_project_id: CHANGEME
 infisical_env:        prod
-# infisical_client_id, infisical_client_secret, tailscale_authkey are
-# passed at runtime via -e and never committed.
 
 # nginx must be first (creates shared-proxy network); tunnel last (cloudflare credential is unique).
 stack_order:

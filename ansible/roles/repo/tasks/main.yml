@@ -26,6 +26,13 @@
   become_user: "{{ vps_user }}"
   no_log: true
 
+- name: Sanity-check the fetched deploy key parses
+  ansible.builtin.command: ssh-keygen -y -f {{ home_dir }}/.ssh/id_ed25519
+  become: true
+  become_user: "{{ vps_user }}"
+  changed_when: false
+  no_log: true
+
 - name: Clone containers repo to {{ containers_dir }}
   ansible.builtin.git:
     repo: "{{ repo_url }}"

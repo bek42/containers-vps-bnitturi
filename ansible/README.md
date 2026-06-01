@@ -114,18 +114,46 @@ that `make up` works without sudo.
 pip install ansible-core
 ansible-galaxy collection install -r ansible/requirements.yml
 # requires: ansible.posix >= 1.5.0 (synchronize module)
+#           community.sops >= 1.6.0 (sops vars plugin for secrets.sops.yaml)
 ```
 
-### Per-migration runtime secrets (passed via `-e`, never committed)
+### Per-migration runtime overrides (non-secret, all have defaults)
 
-| Variable | What it is |
-|---|---|
-| `tailscale_authkey` | Ephemeral one-time Tailscale auth key (`tskey-auth-…`) |
-| `age_key_src` | Local filesystem path to your age **private** key file |
-| `ssh_pubkey_path` | Local path to the control-node SSH **public** key — installed into `bharani`'s `authorized_keys` |
-| `old_box_pubkey_path` | Local path to the old box's `bharani` SSH **public** key — needed so `restore.yml`'s rsync push from old→new is authorized |
-| `infisical_client_id` | Universal-auth client ID for Infisical |
-| `infisical_client_secret` | Universal-auth client secret for Infisical |
+The three secret vars (`infisical_client_id`, `infisical_client_secret`,
+`tailscale_authkey`) are now loaded automatically from
+`group_vars/all/secrets.sops.yaml` — see [Migration secrets (sops/age)](#migration-secrets-sopsage) below.
+
+The path vars below have sensible defaults in `group_vars/all/main.yml` and
+only need `-e` if your control-node layout differs from the defaults.
+
+| Variable | Default | What it is |
+|---|---|---|
+| `age_key_src` | `~/.config/age/keys.txt` | Local filesystem path to your age **private** key file |
+| `ssh_pubkey_path` | `~/.ssh/id_ed25519.pub` | Local path to the control-node SSH **public** key — installed into `bharani`'s `authorized_keys` |
+| `old_box_pubkey_path` | `~/.ssh/old_box.pub` | Local path to the old box's `bharani` SSH **public** key — needed so `restore.yml`'s rsync push from old→new is authorized |
+
+### Migration secrets (sops/age)
+
+`infisical_client_id`, `infisical_client_secret`, and `tailscale_authkey` are
+stored in `group_vars/all/secrets.sops.yaml`, encrypted with age. The
+`community.sops` vars plugin auto-decrypts this file at play time using the age
+private key already on the control node (`~/.config/age/keys.txt` by default).
+
+To populate and encrypt the file before the first run:
+
+```bash
+cd ansible && sops group_vars/all/secrets.sops.yaml
+```
+
+sops reads the `secrets\.sops\.ya?ml$` creation rule from `ansible/.sops.yaml`
+and encrypts all values with the age recipient. **The file must be
+sops-encrypted before committing — never commit the plaintext `REPLACE_ME`
+template.**
+
+> **Note on `tailscale_authkey`:** Tailscale auth keys are ephemeral by
+> default (one-time use). You must re-encrypt a fresh key into
+> `secrets.sops.yaml` before each full migration run, unless you generate a
+> reusable key from the Tailscale admin console.
 
 ---
 
@@ -181,7 +209,9 @@ ansible/
 ├── deploy.yml                  # Phase 4: start all stacks in stack_order (bharani)
 │
 ├── group_vars/
-│   └── all.yml                 # all shared variables (paths, versions, stack list)
+│   └── all/
+│       ├── main.yml            # all non-secret shared variables (paths, versions, stack list)
+│       └── secrets.sops.yaml   # sops/age-encrypted: infisical_client_id/secret, tailscale_authkey
 │
 ├── inventory/
 │   └── hosts.yml               # three hosts: old_vps, new_vps, new_vps_raw
@@ -204,7 +234,7 @@ ansible/
 
 ## 6. group_vars Reference
 
-File: `ansible/group_vars/all.yml`
+Files: `ansible/group_vars/all/main.yml` (plaintext) and `ansible/group_vars/all/secrets.sops.yaml` (sops/age-encrypted)
 
 | Variable | Value / Default | Notes |
 |---|---|---|
@@ -226,13 +256,14 @@ File: `ansible/group_vars/all.yml`
 | `infisical_env` | `prod` | Infisical environment name |
 | `stack_order` | nginx, registry, infisical, vaultwarden, gmailit, portainer, tunnel | Deploy order; nginx first (shared-proxy), tunnel last |
 | `stateful_db_stacks` | see file | Per-stack migration config (compose_file, engine, db_container …) |
-| **Runtime `-e` only — never set real values here:** | | |
-| `age_key_src` | `CHANGEME` | Local path to age private key |
-| `ssh_pubkey_path` | `CHANGEME` | Local path to control-node SSH public key |
-| `old_box_pubkey_path` | `CHANGEME` | Local path to old box's `bharani` public key |
-| `tailscale_authkey` | `CHANGEME` | Ephemeral Tailscale auth key |
-| `infisical_client_id` | *(not set)* | Universal-auth client ID — runtime only |
-| `infisical_client_secret` | *(not set)* | Universal-auth client secret — runtime only |
+| **Path overrides — defaults shown; pass `-e` only if your layout differs:** | | |
+| `age_key_src` | `~/.config/age/keys.txt` | Local path to age private key; override with `-e` if needed |
+| `ssh_pubkey_path` | `~/.ssh/id_ed25519.pub` | Local path to control-node SSH public key; override with `-e` if needed |
+| `old_box_pubkey_path` | `~/.ssh/old_box.pub` | Local path to old box's `bharani` public key; override with `-e` if needed |
+| **In `secrets.sops.yaml` (sops/age-encrypted — never plaintext in git):** | | |
+| `tailscale_authkey` | *(encrypted)* | Ephemeral Tailscale auth key — re-encrypt before each run |
+| `infisical_client_id` | *(encrypted)* | Universal-auth client ID for Infisical |
+| `infisical_client_secret` | *(encrypted)* | Universal-auth client secret for Infisical |
 
 ---
 
@@ -261,8 +292,7 @@ ansible-galaxy collection install -r requirements.yml
 ### Phase 1 — Install Tailscale (root over public IP)
 
 ```bash
-ansible-playbook bootstrap-tailscale.yml \
-  -e tailscale_authkey=tskey-auth-XXXXXXXXXXXX
+ansible-playbook bootstrap-tailscale.yml
 ```
 
 After it completes, get the new box's Tailscale address:
@@ -289,10 +319,13 @@ new_vps:
 ansible-playbook bootstrap.yml \
   -e age_key_src=~/.config/age/keys.txt \
   -e ssh_pubkey_path=~/.ssh/id_ed25519.pub \
-  -e old_box_pubkey_path=~/.ssh/old_box.pub \
-  -e infisical_client_id=<id> \
-  -e infisical_client_secret=<secret>
+  -e old_box_pubkey_path=~/.ssh/old_box.pub
 ```
+
+> The `-e` path flags are optional if your control-node layout matches the
+> defaults in `group_vars/all/main.yml`. `infisical_client_id`,
+> `infisical_client_secret`, and `tailscale_authkey` are loaded automatically
+> from `secrets.sops.yaml`.
 
 Roles applied in order: `common` → `user` → `docker` → `tooling` → `secrets` → `repo`.
 
@@ -336,13 +369,13 @@ already started by `restore.yml` are left running. nginx always starts first
 
 ```bash
 ansible-playbook site.yml \
-  -e tailscale_authkey=tskey-auth-XXXXXXXXXXXX \
   -e age_key_src=~/.config/age/keys.txt \
   -e ssh_pubkey_path=~/.ssh/id_ed25519.pub \
-  -e old_box_pubkey_path=~/.ssh/old_box.pub \
-  -e infisical_client_id=<id> \
-  -e infisical_client_secret=<secret>
+  -e old_box_pubkey_path=~/.ssh/old_box.pub
 ```
+
+> The `-e` path flags are optional if your layout matches the defaults.
+> All three secret vars are loaded from `secrets.sops.yaml`.
 
 `site.yml` imports all four playbooks in order. Requires inventory to be fully
 filled in first.
