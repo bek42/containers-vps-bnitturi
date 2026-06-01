@@ -7,7 +7,15 @@
       "Bash(docker context *)",
       "Bash(ssh bnitturi *)",
       "Bash(git push *)",
-      "Bash(curl -s -o /dev/null -w '%{http_code}\\\\n' https://reg.greatsky.co.uk/v2/)"
+      "Bash(curl -s -o /dev/null -w '%{http_code}\\\\n' https://reg.greatsky.co.uk/v2/)",
+      "Bash(ansible-playbook --syntax-check bootstrap.yml)",
+      "Bash(ansible-playbook --syntax-check bootstrap-tailscale.yml)",
+      "PowerShell(wsl --list --quiet 2>$null)",
+      "PowerShell(wsl -e which ansible-playbook 2>$null)",
+      "PowerShell(python -m ansible --version 2>$null; pip show ansible 2>$null; \\(Get-Command python\\).Source)",
+      "PowerShell(python -m ansible --version 2>&1)",
+      "PowerShell(Move-Item \"c:\\\\energy\\\\containers-vps-bnitturi\\\\recipients.txt\" \"c:\\\\energy\\\\containers-vps-bnitturi\\\\ansible\\\\recipients.txt\")",
+      "PowerShell(Move-Item \"c:\\\\energy\\\\containers-vps-bnitturi\\\\.sops.yaml\" \"c:\\\\energy\\\\containers-vps-bnitturi\\\\ansible\\\\.sops.yaml\")"
     ]
   }
 }

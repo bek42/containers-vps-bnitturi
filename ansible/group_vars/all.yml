@@ -85,6 +85,14 @@ ssh_pubkey_path:     CHANGEME   # local path to control-node SSH public key
 old_box_pubkey_path: CHANGEME   # local path to old box's bharani SSH public key (for restore rsync)
 tailscale_authkey:   CHANGEME   # ephemeral one-time Tailscale auth key
 
+# Infisical connection vars (used by the repo role to fetch the GitHub deploy key).
+# Supply infisical_client_id and infisical_client_secret with -e at runtime — never commit.
+infisical_domain:     CHANGEME   # e.g. https://infisical.<domain> — the OLD box, pre-cutover
+infisical_project_id: CHANGEME
+infisical_env:        prod
+# infisical_client_id, infisical_client_secret, tailscale_authkey are
+# passed at runtime via -e and never committed.
+
 # nginx must be first (creates shared-proxy network); tunnel last (cloudflare credential is unique).
 stack_order:
   - nginx

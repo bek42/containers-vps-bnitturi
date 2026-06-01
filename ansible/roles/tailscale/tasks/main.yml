@@ -18,4 +18,5 @@
 
 - name: Connect to Tailscale network
   ansible.builtin.command:
-    cmd: tailscale up --authkey={{ tailscale_authkey }}
+    cmd: tailscale up --ssh --authkey={{ tailscale_authkey }}
+  no_log: true

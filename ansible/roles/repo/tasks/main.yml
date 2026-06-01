@@ -3,6 +3,29 @@
 # Requires either:
 #   a) A GitHub deploy key at ~/.ssh/id_ed25519 for the bharani user, OR
 #   b) SSH agent forwarding (add ForwardAgent yes + the repo key to the control-node agent).
+- name: Install Infisical CLI
+  ansible.builtin.shell:
+    cmd: "curl -1sLf https://dl.cloudsmith.io/public/infisical/infisical-cli/setup.deb.sh | bash && apt-get install -y infisical"
+    creates: /usr/bin/infisical
+    executable: /bin/bash
+  become: true
+
+- name: Fetch GitHub deploy key from Infisical
+  ansible.builtin.shell:
+    cmd: |
+      export INFISICAL_TOKEN=$(infisical login --method=universal-auth \
+        --client-id={{ infisical_client_id }} --client-secret={{ infisical_client_secret }} \
+        --domain={{ infisical_domain }} --silent --plain)
+      install -d -m 700 ~/.ssh
+      infisical secrets get GITHUB_DEPLOY_KEY --plain \
+        --domain={{ infisical_domain }} --projectId={{ infisical_project_id }} --env={{ infisical_env }} \
+        > ~/.ssh/id_ed25519
+      chmod 600 ~/.ssh/id_ed25519
+    executable: /bin/bash
+  become: true
+  become_user: "{{ vps_user }}"
+  no_log: true
+
 - name: Clone containers repo to {{ containers_dir }}
   ansible.builtin.git:
     repo: "{{ repo_url }}"
