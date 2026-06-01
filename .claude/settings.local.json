@@ -22,7 +22,12 @@
       "PowerShell(python -m pip show ansible-core 2>$null)",
       "PowerShell(wsl -e bash -c \"ansible-galaxy --version 2>&1; ansible-playbook --version 2>&1\" 2>&1)",
       "Bash(python3 -c \"import ansible; print\\(ansible.__version__\\)\")",
-      "Bash(pip3 show *)"
+      "Bash(pip3 show *)",
+      "Bash(cp -r c:/energy/containers-vps-bnitturi/ansible/. c:/energy/ansible-vps-bnitturi/)",
+      "Read(//c/energy/ansible-vps-bnitturi/**)",
+      "Bash(gh repo *)",
+      "Bash(gh auth *)",
+      "Bash(git commit -m ' *)"
     ]
   }
 }
