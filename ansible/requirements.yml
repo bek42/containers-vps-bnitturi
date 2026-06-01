@@ -1,6 +1,0 @@
----
-collections:
-  - name: ansible.posix
-    version: ">=1.5.0"   # synchronize module used in restore.yml transfer play
-  - name: community.sops
-    version: ">=1.6.0"   # sops vars plugin for auto-decrypting group_vars/all/secrets.sops.yaml
