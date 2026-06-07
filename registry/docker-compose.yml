@@ -25,7 +25,7 @@ services:
     container_name: registry-ui
     restart: always
     ports:
-      - "127.0.0.1:8002:80"
+      - "0.0.0.0:8002:80"
     environment:
       - SINGLE_REGISTRY=true
       - REGISTRY_TITLE=Docker Registry UI

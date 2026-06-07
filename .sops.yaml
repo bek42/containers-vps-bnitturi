@@ -1,4 +1,0 @@
-creation_rules:
-  - path_regex: '\.env$'
-    age: age1qdp07v8r3gjgv0k8ehmlltdhljdtsl2wsnfqrhjkvxx9ndaptaxseew0cz
-    unencrypted_regex: '^(SITE_URL|HOST|PORT|NODE_ENV|LOG_LEVEL)$'

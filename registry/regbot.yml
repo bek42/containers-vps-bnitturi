@@ -12,6 +12,9 @@ scripts:
     script: |
       keep_count = 2
       protected = { ["latest"] = true, ["stable"] = true, ["main"] = true }
+      -- variant suffixes that define a parallel release track; each gets its
+      -- own keep_count rather than competing with the default (no-suffix) line
+      variants = { "frontend", "backend" }
       platforms = { "linux/amd64", "linux/arm64", "linux/arm/v7" }
 
       function get_created(ref)
@@ -31,54 +34,70 @@ scripts:
         return nil
       end
 
+      -- returns (base_name, bucket_key); base strips a recognised variant
+      -- suffix so protection and bucketing key off the unsuffixed name
+      function split_variant(t)
+        for _, v in ipairs(variants) do
+          local suffix = "-" .. v
+          if #t > #suffix and t:sub(-#suffix) == suffix then
+            return t:sub(1, #t - #suffix), v
+          end
+        end
+        return t, ""
+      end
+
       repos = repo.ls("registry:5000")
       for _, r in ipairs(repos) do
         ref = reference.new("registry:5000/" .. r)
         tags = tag.ls(ref)
 
-        with_dates = {}
-        without_dates = {}
+        -- buckets[key] = { with_dates = {...}, without_dates = {...} }
+        buckets = {}
         for _, t in ipairs(tags) do
-          if not protected[t] then
+          local base, vkey = split_variant(t)
+          if not protected[base] then
             ref:tag(t)
             local created = get_created(ref)
+            local b = buckets[vkey]
+            if not b then
+              b = { with_dates = {}, without_dates = {} }
+              buckets[vkey] = b
+            end
             if created then
-              table.insert(with_dates, {tag = t, created = created})
+              table.insert(b.with_dates, {tag = t, created = created})
             else
-              table.insert(without_dates, t)
+              table.insert(b.without_dates, t)
             end
           end
         end
 
-        -- newest dates first
-        table.sort(with_dates, function(a, b) return a.created > b.created end)
-        -- alphabetical descending (so semver "0.16.0" sorts before "0.9.0" alphabetically — not perfect but ok)
-        table.sort(without_dates, function(a, b) return a > b end)
+        log("Repo " .. r .. ": " .. #tags .. " total tags")
 
-        log("Repo " .. r .. ": " .. #tags .. " total tags, " .. #with_dates .. " with dates, " .. #without_dates .. " without dates")
+        for vkey, b in pairs(buckets) do
+          -- newest dates first
+          table.sort(b.with_dates, function(a, c) return a.created > c.created end)
+          -- alphabetical descending fallback for undated tags
+          table.sort(b.without_dates, function(a, c) return a > c end)
 
-        -- delete from with_dates first (date-based decision is more reliable),
-        -- then from without_dates if we still need to delete more
-        local total_candidates = #with_dates + #without_dates
-        local to_delete = total_candidates - keep_count
-        if to_delete <= 0 then
-          goto continue
+          -- dated tags are kept ahead of undated ones, so undated tags are
+          -- only ever retained if a bucket has fewer than keep_count dated tags
+          local combined = {}
+          for _, c in ipairs(b.with_dates) do
+            table.insert(combined, {tag = c.tag, info = tostring(c.created)})
+          end
+          for _, t in ipairs(b.without_dates) do
+            table.insert(combined, {tag = t, info = "no-date"})
+          end
+
+          local label = vkey
+          if label == "" then label = "(default)" end
+          log("  bucket " .. label .. ": " .. #combined .. " candidates ("
+              .. #b.with_dates .. " dated, " .. #b.without_dates .. " undated)")
+
+          for i = keep_count + 1, #combined do
+            ref:tag(combined[i].tag)
+            tag.delete(ref)
+            log("  Deleted: " .. r .. ":" .. combined[i].tag .. " (" .. combined[i].info .. ")")
+          end
         end
-
-        -- iterate combined list (dated first kept, then undated) from end
-        local combined = {}
-        for _, c in ipairs(with_dates) do
-          table.insert(combined, {tag = c.tag, info = c.created})
-        end
-        for _, t in ipairs(without_dates) do
-          table.insert(combined, {tag = t, info = "no-date"})
-        end
-
-        for i = keep_count + 1, #combined do
-          ref:tag(combined[i].tag)
-          tag.delete(ref)
-          log("Deleted: " .. r .. ":" .. combined[i].tag .. " (" .. combined[i].info .. ")")
-        end
-
-        ::continue::
       end

@@ -1,4 +1,0 @@
----
-collections:
-  - name: ansible.posix
-    version: ">=1.5.0"   # synchronize module used in restore.yml transfer play
