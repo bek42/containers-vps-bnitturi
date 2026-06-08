@@ -11,7 +11,7 @@ services:
     container_name: infisical
     restart: unless-stopped
     ports:
-      - "127.0.0.1:8080:8080"
+      - "${TAILSCALE_IP}:8080:8080"
     environment:
       - DB_CONNECTION_URI
       - REDIS_URL
