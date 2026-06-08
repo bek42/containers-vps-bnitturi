@@ -1,7 +1,7 @@
 TUNNEL_ID := 53f49069-a8cd-410e-821e-1f2b868cc70f
 CRED      := cloudflared/$(TUNNEL_ID).json
 
-.PHONY: up down restart encrypt
+.PHONY: up down restart clean restart-clean encrypt
 
 up:
 	age --decrypt -i ~/.config/age/keys.txt -o $(CRED) $(CRED).age
@@ -12,6 +12,11 @@ down:
 	docker compose down
 
 restart: down up
+
+clean:
+	docker compose down --rmi all
+
+restart-clean: clean up
 
 encrypt:
 	age -R ../recipients.txt -a -o $(CRED).age $(CRED)
