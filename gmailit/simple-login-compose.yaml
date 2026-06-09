@@ -27,7 +27,7 @@ services:
     restart: always
 
   postgres:
-    image: postgres:12.1
+    image: postgres:16
     container_name: sl-db
     env_file:
       - ./.env
@@ -39,6 +39,9 @@ services:
       start_period: 3s
     volumes:
       - /home/bharani/container-data/gmailit/db:/var/lib/postgresql/data
+    networks:
+      - default
+      - shared-db
     restart: unless-stopped
 
   migration:
@@ -126,3 +129,7 @@ services:
       app:
         condition: service_started
     restart: unless-stopped
+
+networks:
+  shared-db:
+    external: true
