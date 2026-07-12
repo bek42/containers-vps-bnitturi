@@ -14,6 +14,6 @@ clean:
 restart-clean: clean up
 
 install-cron:
-	@echo "0 3 * * 0 root $(PWD)/gc.sh" \
-	  | sudo tee /etc/cron.d/registry-gc > /dev/null
-	@echo "Installed: /etc/cron.d/registry-gc"
+	@( crontab -l 2>/dev/null | grep -v 'containers/registry/gc.sh' ; \
+	   echo "0 3 * * 0 $(PWD)/gc.sh" ) | crontab -
+	@echo "Installed in bharani's crontab (no root needed): $(PWD)/gc.sh"
