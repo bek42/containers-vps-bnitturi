@@ -61,7 +61,7 @@ For the automated login flow see the `docker-registry.env` / `make login` patter
 4. Keeps the 2 newest dated tags; falls back to alphabetical for tags without a date (multi-arch buildx images)
 5. Deletes everything else
 
-Tag deletion alone doesn't free disk space — only references. `gc.sh` (cron'd Sunday 3am) runs the registry's garbage collector to reclaim storage.
+Tag deletion alone doesn't free disk space — only references. `gc.sh` (Sunday 3am, via bharani's user crontab — `make install-cron`) runs the registry's garbage collector to reclaim storage. `gc.sh` pipes its output through `tee` rather than a plain `>>` redirect, so a full disk (which can make the log file itself unwritable) can't silently prevent GC from running — that's what happened on 2026-07-12: the registry filled to 100% and the weekly job left no trace at all because the log redirect failed before the cleanup command ever started. Log lives at `~/container-data/registry/gc.log`, not `/var/log`, so it doesn't need root to write.
 
 ### Manual operations
 
@@ -88,7 +88,7 @@ curl -u USER:PASS https://reg.greatsky.co.uk/v2/<repo>/tags/list
 1. Install `make`, `docker`, `docker compose`.
 2. Clone repo, `cd registry`.
 3. Restore `~/container-data/registry/data/` from backup if you want to keep existing images.
-4. `sudo make install-cron`.
+4. `make install-cron` (no sudo needed — installs into the current user's crontab).
 5. `make up`.
 
 Data dir is the only state. Auth lives in the NPM stack — restore that volume separately.
@@ -121,3 +121,10 @@ docker compose run --rm regbot -c /home/appuser/regbot.yml once
 **Registry won't delete tags (405).** Verify `config.yml` has `storage.delete.enabled: true`.
 
 **403 in browser, 401 from CLI.** The 401 is correct — `docker login` once and the CLI works. A browser 403 usually means the NPM Access List has `Satisfy: All` with `0 Rules`; set Satisfy to `Any` or add an `allow 0.0.0.0/0` rule.
+
+**Disk fills up and pushes start failing with 500s.** Check `df -h /` first. Since `regbot` only prunes to `keep_count` tags per repo, sustained growth across many repos can still fill the disk faster than the weekly GC reclaims it. Force both manually:
+```bash
+docker compose run --rm regbot -c /home/appuser/regbot.yml once
+docker exec registry registry garbage-collect --delete-untagged /etc/distribution/config.yml
+```
+Verify `crontab -l` actually contains the `gc.sh` line — a disk that reaches 100% can prevent the job's own log write (and, before the `tee` fix, silently prevented the job from running at all).
