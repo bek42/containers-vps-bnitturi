@@ -8,8 +8,8 @@ Vaultwarden (Bitwarden-compatible password manager) with daily encrypted backup 
 
 | Service | Container | Image | Purpose |
 |---|---|---|---|
-| `vaultwarden` | `vaultwarden` | `vaultwarden/server:1.36.0`      | Password manager server |
-| `vw-backup`   | `vw-backup`   | `ttionya/vaultwarden-backup:1.26.8` | Daily 05:05 backup, zipped, to OneDrive via rclone |
+| `vaultwarden` | `vaultwarden` | `vaultwarden/server:1.37.4`      | Password manager server |
+| `vw-backup`   | `vw-backup`   | `ttionya/vaultwarden-backup:1.27.2` | Daily 05:05 backup, zipped, to OneDrive via rclone |
 
 ## Ports
 
