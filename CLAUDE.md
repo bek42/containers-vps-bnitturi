@@ -1,5 +1,12 @@
 # CLAUDE.md
 
+## Key principle: git is the only way changes reach the host
+
+- **Never edit files directly on the deploy host** (`bnitturi`): no `sed`, no `scp`, no hand edits in `~/containers`. Its checkout must always be a clean copy of `origin/main`.
+- Every change, image bumps included, follows the same flow: edit here, commit, push to `origin/main`, then `git pull` on the host and run `make up`.
+- You're authorized to commit and push changes to this repo yourself as part of a deploy. You don't need to ask first.
+
+
 ## Where things run
 
 - **Dev machine** (`vps-ab21cf59`, this checkout at `~/projects/containers-vps-bnitturi`): editing only. No service containers, no `~/container-data`.

@@ -9,7 +9,7 @@ For initial setup and upgrade procedure see `SimpleLogin-Setup-Upgrade-Guide.md`
 | Service (compose) | Container | Image | Purpose |
 |---|---|---|---|
 | `postfix`    | `postfix`       | `private/postfix:latest` (built locally) | SMTP server (ports 25, 587) |
-| `postgres`   | `sl-db`         | `postgres:12.1`                          | Application DB |
+| `postgres`   | `sl-db`         | `postgres:16.15`                         | Application DB |
 | `migration`  | `sl-migration`  | `simplelogin/app:4.6.5-beta`             | One-shot DB migration |
 | `init`       | `sl-init`       | `simplelogin/app:4.6.5-beta`             | One-shot init after migration |
 | `app`        | `sl-app`        | `simplelogin/app:4.6.5-beta`             | Web UI/API on `127.0.0.1:7777` |
