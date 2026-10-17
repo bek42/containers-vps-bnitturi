@@ -1,5 +1,22 @@
-# YAML anchor: the SimpleLogin secret env vars passed through from sops exec-env
+# YAML anchor: env vars passed through from sops exec-env (see Makefile).
+# Config keys come from .env, secrets from simplelogin.env; both are sops-encrypted.
 x-sl-secret-env: &sl-secret-env
+  - POSTGRES_DB
+  - POSTGRES_USER
+  - DOMAIN
+  - SUBDOMAIN
+  - EMAIL_DOMAIN
+  - URL
+  - DKIM_PRIVATE_KEY_PATH
+  - DKIM_SELECTOR
+  - SUPPORT_EMAIL
+  - EMAIL_SERVERS_WITH_PRIORITY
+  - DISABLE_ALIAS_SUFFIX
+  - DISABLE_REGISTRATION
+  - DISABLE_ONBOARDING
+  - LOCAL_FILE_UPLOAD
+  - GNUPGHOME
+  - POSTFIX_SERVER
   - POSTGRES_PASSWORD
   - FLASK_SECRET
   - DB_URI
@@ -11,8 +28,6 @@ services:
       context: ./postfix/Dockerfiles
       dockerfile: Dockerfile
     container_name: postfix
-    env_file:
-      - ./.env
     environment:
       MAIL_CONFIG: /etc/postfix/conf.d/
     ports:
@@ -29,8 +44,6 @@ services:
   postgres:
     image: postgres:16.15
     container_name: sl-db
-    env_file:
-      - ./.env
     environment: *sl-secret-env
     healthcheck:
       test: ["CMD", "pg_isready"]
@@ -48,8 +61,6 @@ services:
     image: simplelogin/app:4.6.5-beta
     container_name: sl-migration
     command: ["alembic", "upgrade", "head"]
-    env_file:
-      - ./.env
     environment: *sl-secret-env
     volumes:
       - /home/bharani/container-data/gmailit/pgp:/sl/pgp
@@ -65,8 +76,6 @@ services:
     image: simplelogin/app:4.6.5-beta
     container_name: sl-init
     command: ["python", "init_app.py"]
-    env_file:
-      - ./.env
     environment: *sl-secret-env
     volumes:
       - /home/bharani/container-data/gmailit/pgp:/sl/pgp
@@ -81,8 +90,6 @@ services:
   app:
     image: simplelogin/app:4.6.5-beta
     container_name: sl-app
-    env_file:
-      - ./.env
     environment: *sl-secret-env
     volumes:
       - /home/bharani/container-data/gmailit/pgp:/sl/pgp
@@ -100,8 +107,6 @@ services:
     image: simplelogin/app:4.6.5-beta
     container_name: sl-email
     command: ["python", "email_handler.py"]
-    env_file:
-      - ./.env
     environment: *sl-secret-env
     volumes:
       - /home/bharani/container-data/gmailit/pgp:/sl/pgp
@@ -117,8 +122,6 @@ services:
     image: simplelogin/app:4.6.5-beta
     container_name: sl-job-runner
     command: ["python", "job_runner.py"]
-    env_file:
-      - ./.env
     environment: *sl-secret-env
     volumes:
       - /home/bharani/container-data/gmailit/pgp:/sl/pgp

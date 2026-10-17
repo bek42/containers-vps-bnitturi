@@ -27,10 +27,10 @@ Two env files, split by sensitivity:
 
 | File | In git? | Contents |
 |---|---|---|
-| `.env`            | yes (plain) | Public config — `DOMAIN`, `URL`, `DKIM_*`, `POSTGRES_DB`, `POSTGRES_USER`, etc. |
+| `.env`            | yes (sops-encrypted) | Config — `DOMAIN`, `URL`, `DKIM_*`, `POSTGRES_DB`, `POSTGRES_USER`, etc. |
 | `simplelogin.env` | yes (sops-encrypted) | Secrets — `POSTGRES_PASSWORD`, `FLASK_SECRET`, `DB_URI` |
 
-Edit secrets with `make edit`. Edit public config by editing `.env` directly.
+Edit secrets with `make edit`, config with `sops edit .env`. Both files are decrypted by `make` via nested `sops exec-env` and passed through by name (`x-sl-secret-env` in the compose file) — a new key must be added to that list too.
 
 Six services share the same secret vars; the compose uses a YAML anchor (`x-sl-secret-env`) to declare them once and reference them per-service.
 

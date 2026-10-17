@@ -1,18 +1,19 @@
 COMPOSE := docker compose -f simple-login-compose.yaml
-SOPS    := sops exec-env simplelogin.env
+# .env (config) and simplelogin.env (secrets) are both sops-encrypted; decrypt both into the env
+sops-run = sops exec-env .env 'sops exec-env simplelogin.env "$(1)"'
 
 .PHONY: up down restart clean restart-clean edit ps logs
 
 up:
-	$(SOPS) '$(COMPOSE) up -d'
+	$(call sops-run,$(COMPOSE) up -d)
 
 down:
-	$(SOPS) '$(COMPOSE) down'
+	$(call sops-run,$(COMPOSE) down)
 
 restart: down up
 
 clean:
-	$(SOPS) '$(COMPOSE) down --rmi all'
+	$(call sops-run,$(COMPOSE) down --rmi all)
 
 restart-clean: clean up
 
@@ -20,7 +21,7 @@ edit:
 	sops edit simplelogin.env
 
 ps:
-	$(SOPS) '$(COMPOSE) ps'
+	$(call sops-run,$(COMPOSE) ps)
 
 logs:
-	$(SOPS) '$(COMPOSE) logs --tail 30 -f'
+	$(call sops-run,$(COMPOSE) logs --tail 30 -f)
