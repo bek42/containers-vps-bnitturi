@@ -1,6 +1,6 @@
 services:
   agentwatch:
-    image: reg.greatsky.co.uk/agentwatch:latest   # CI rewrites this tag on each deploy
+    image: reg.greatsky.co.uk/agentwatch:sha-57de6bea
     container_name: agentwatch
     restart: unless-stopped
     ports:
