@@ -17,4 +17,7 @@ ingress:
   - hostname: v0u1t.bnitturi.com
     service: http://localhost:8080
 
+  - hostname: wiki.bnitturi.com
+    service: http://localhost:8085
+
   - service: http_status:404

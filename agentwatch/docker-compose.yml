@@ -1,0 +1,17 @@
+services:
+  agentwatch:
+    image: reg.greatsky.co.uk/agentwatch:latest   # CI rewrites this tag on each deploy
+    container_name: agentwatch
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8085:8080"       # tunnel reaches it on localhost; nothing public
+    volumes:
+      # Podcast RSS + mp3s; written outside the image so episodes don't need a rebuild
+      - /home/bharani/container-data/agentwatch/podcast:/podcast:ro
+    read_only: true
+    tmpfs:
+      - /tmp
+      - /var/cache/nginx
+      - /run
+    security_opt:
+      - no-new-privileges:true
