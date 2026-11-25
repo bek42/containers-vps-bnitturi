@@ -8,7 +8,7 @@ services:
     volumes:
       # Episodes, played state and feed token. Writable: the /listen page can delete episodes and mark them played.
       - /home/bharani/container-data/agentwatch/podcast:/data
-    user: "1000:1000"                # matches the owner of ~/container-data/agentwatch/podcast
+    user: "1001:1001"                # matches the owner (bharani) of ~/container-data/agentwatch/podcast
     read_only: true
     tmpfs:
       - /tmp
