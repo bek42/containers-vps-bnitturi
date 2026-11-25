@@ -6,12 +6,11 @@ services:
     ports:
       - "127.0.0.1:8085:8080"       # tunnel reaches it on localhost; nothing public
     volumes:
-      # Podcast RSS + mp3s; written outside the image so episodes don't need a rebuild
-      - /home/bharani/container-data/agentwatch/podcast:/podcast:ro
+      # Episodes, played state and feed token. Writable: the /listen page can delete episodes and mark them played.
+      - /home/bharani/container-data/agentwatch/podcast:/data
+    user: "1000:1000"                # matches the owner of ~/container-data/agentwatch/podcast
     read_only: true
     tmpfs:
       - /tmp
-      - /var/cache/nginx
-      - /run
     security_opt:
       - no-new-privileges:true
