@@ -1,3 +1,8 @@
+# AgentWatch: one Compose project, two containers.
+#   agentwatch       website server (wiki, /listen player, search, job API). Reached through the tunnel as wiki.bnitturi.com.
+#   agentwatch-core  research pipeline, scheduler, interactive worker, narration and website build. No ports, outbound only.
+# They share only bind mounts under /home/bharani/container-data/agentwatch (the podcast directory and the built site).
+# CI pins both image lines to tag@digest on every release; do not edit them by hand.
 services:
   agentwatch:
     image: reg.greatsky.co.uk/agentwatch:sha-932feb27
@@ -6,11 +11,53 @@ services:
     ports:
       - "127.0.0.1:8085:8080"       # tunnel reaches it on localhost; nothing public
     volumes:
-      # Episodes, played state and feed token. Writable: the /listen page can delete episodes and mark them played.
+      # Episodes, played state, feed token, job queue, saved insights. Writable: /listen deletes episodes and records progress.
       - /home/bharani/container-data/agentwatch/podcast:/data
-    user: "1001:1001"                # matches the owner (bharani) of ~/container-data/agentwatch/podcast
+      # The built website. Read-only here: only agentwatch-core writes it (atomic switch of the "current" link).
+      - /home/bharani/container-data/agentwatch/site:/site:ro
+    user: "1001:1001"                # matches the owner (bharani) of ~/container-data/agentwatch
     read_only: true
     tmpfs:
       - /tmp
     security_opt:
       - no-new-privileges:true
+    cap_drop: [ALL]
+    mem_limit: 256m
+
+  agentwatch-core:
+    image: reg.greatsky.co.uk/agentwatch-core:latest
+    container_name: agentwatch-core
+    restart: unless-stopped
+    user: "1001:1001"
+    read_only: true
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+    mem_limit: 1536m                 # measured: about 120 MB idle, about 910 MB peak during the 5-minute website build
+    cpus: 2
+    pids_limit: 512
+    tmpfs:
+      - /tmp:size=1g,mode=1777
+      - /run/aw:size=1m,uid=1001,mode=700                       # the OpenAI key is placed here at start and removed from the environment
+      - /opt/agentwatch/quartz/quartz/.quartz-cache:size=256m,uid=1001
+    environment:
+      AW_STANDBY: "1"                # 1 = up, signed in and inspectable, but runs no jobs and no worker. Set "0" to go live (see README).
+      AUTO_PUBLISH: "1"              # 0 = hold drafts for manual approval
+      DAILY_BUDGET_USD: "5"          # API-equivalent workload control for the research pipeline. NOT the subscription allowance.
+      INTERACTIVE_BUDGET_USD: "4"    # same, for chat and on-demand episodes
+      NOTIFY_SUCCESS: "0"            # 1 = email every published episode (default: only failures that need you)
+      OPENAI_API_KEY: ${OPENAI_API_KEY}   # from agentwatch.env (sops); the entrypoint moves it to a private tmpfs file
+      NOTIFY_TO: ${NOTIFY_TO}             # from agentwatch.env (sops)
+      keys_config_linux: /home/agent/secrets/api_keys.ini
+    volumes:
+      - /home/bharani/container-data/agentwatch/workspace:/srv/agentwatch/repo   # config, profile, research sources, wiki, evidence, episodes, state, usage, checkpoints
+      - /home/bharani/container-data/agentwatch/podcast:/podcast                 # shared with the website: published episodes, listening history, chat jobs, saved insights
+      - /home/bharani/container-data/agentwatch/site:/site                       # generated Quartz website and search index (builds/, current -> last good build)
+      - /home/bharani/container-data/agentwatch/state:/state                     # local git mirror of the workspace
+      - /home/bharani/container-data/agentwatch/logs:/var/log/agentwatch         # rotated logs and the health heartbeat
+      - /home/bharani/container-data/agentwatch/backups:/backups
+      - /home/bharani/container-data/agentwatch/claude:/home/agent/.claude       # the Claude Code subscription sign-in: never in an image or Git, excluded from backups
+      - ./api_keys.ini:/home/agent/secrets/api_keys.ini:ro   # decrypted by "make up" from api_keys.ini.age (gitignored)
+    logging:
+      driver: json-file
+      options: {max-size: "10m", max-file: "3"}
