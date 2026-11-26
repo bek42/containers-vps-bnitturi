@@ -1,6 +1,6 @@
 services:
   agentwatch:
-    image: reg.greatsky.co.uk/agentwatch:sha-8b7db158
+    image: reg.greatsky.co.uk/agentwatch:sha-2ec7bc81
     container_name: agentwatch
     restart: unless-stopped
     ports:
