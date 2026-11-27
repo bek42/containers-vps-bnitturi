@@ -5,7 +5,7 @@
 # CI pins both image lines to tag@digest on every release; do not edit them by hand.
 services:
   agentwatch:
-    image: reg.greatsky.co.uk/agentwatch:v0.2.0@sha256:ae5ac1da5a20495d61add3ccc81b6d1cee75996cd22567b76bde72e300a8c1a2
+    image: reg.greatsky.co.uk/agentwatch:v0.2.1@sha256:adf10dddea9b85bf90fa69978e1e70df9c009ed7385357e4d4e8a3a8e7f62056
     container_name: agentwatch
     restart: unless-stopped
     ports:
@@ -25,7 +25,7 @@ services:
     mem_limit: 256m
 
   agentwatch-core:
-    image: reg.greatsky.co.uk/agentwatch-core:v0.2.0@sha256:b7dafa293e64be4b0d2902010d00327694979c4be67fc015ba54d585f21ab26c
+    image: reg.greatsky.co.uk/agentwatch-core:v0.2.1@sha256:f32c058398ecf0145a880ee9ea5cecf7f5d24b6c2a56d22ee0b91f1f935251a9
     container_name: agentwatch-core
     restart: unless-stopped
     user: "1001:1001"
