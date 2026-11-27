@@ -33,7 +33,7 @@ services:
     cap_drop: [ALL]
     security_opt:
       - no-new-privileges:true
-    mem_limit: 1536m                 # measured: about 120 MB idle, about 910 MB peak during the 5-minute website build
+    mem_limit: 2048m                 # measured: about 90 MB idle; the 5-minute website build peaks near 1.35 GB while parsing, so 1.5 GB was too tight
     cpus: 2
     pids_limit: 512
     tmpfs:
