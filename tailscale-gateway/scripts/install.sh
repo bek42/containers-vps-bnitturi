@@ -10,8 +10,10 @@ DATA="$HOME/container-data/tailscale-gateway"
 
 mkdir -p "$DATA"/{tailscale,dns-proxy,secrets,backups}
 chmod 700 "$DATA/secrets" "$DATA/backups"
-# tailscale/ is written by root inside the container (node key); 700 keeps it private once the container owns it.
-[ -O "$DATA/tailscale" ] && chmod 700 "$DATA/tailscale" || true
+# tailscale/ holds the node private key. It is owned by root (the container user, which has no DAC_OVERRIDE) with mode 700.
+if [ "$(stat -c %u "$DATA/tailscale")" != 0 ]; then
+  docker run --rm --entrypoint sh -v "$DATA/tailscale:/s" tailscale/tailscale:v1.104.7 -c 'chown -R 0:0 /s && chmod 700 /s'
+fi
 
 scripts/validate.sh --static
 docker compose pull -q

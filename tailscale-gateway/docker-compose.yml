@@ -17,13 +17,12 @@ services:
       - "--upstream=${DOH_UPSTREAM:?run make up, DOH_UPSTREAM comes from tailscale-gateway.env}"
     volumes:
       - ./config/dns-proxy.conf:/opt/dnsproxy/config.yaml:ro
-    sysctls:
-      net.ipv4.ip_unprivileged_port_start: "53"     # lets the unprivileged user bind 53 inside this namespace only
     networks:
       gateway:
         ipv4_address: 10.53.53.53
     read_only: true
     cap_drop: [ALL]
+    cap_add: [NET_BIND_SERVICE]                    # the binary carries this file capability; nothing else is granted
     security_opt: ["no-new-privileges:true"]
     mem_limit: 64m
     cpus: 0.5
@@ -78,6 +77,7 @@ services:
     tmpfs:
       - /tmp
       - /var/run/tailscale
+      - /root/.cache                               # tailscaled log cache (read-only root filesystem)
     networks:
       gateway:
         ipv4_address: 10.53.53.2
