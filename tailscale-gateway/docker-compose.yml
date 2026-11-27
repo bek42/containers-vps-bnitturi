@@ -1,0 +1,107 @@
+# tailscale-gateway: a Tailscale exit node whose clients get Cloudflare Zero Trust DNS filtering.
+#   dns        AdGuard dnsproxy. Forwards every query to the Cloudflare Gateway location DoH endpoint. No fallback resolver, no ports published.
+#   tailscale  A separate Tailscale node (bnitturi-gateway) in its own network namespace, advertised as an exit node. Its own resolver is
+#              the dns service, so exit-node clients (whose DNS Tailscale sends to the exit node) are filtered with no tailnet-wide DNS change.
+#              Scoped firewall rules live only in this container's namespace: client DNS on port 53 is redirected to the dns service, DoT/DoQ
+#              on 853 and well-known DoH resolver IPs are rejected, private ranges and the host are unreachable, IPv6 forwarding is rejected.
+# The host's own Tailscale (node "bnitturi"), firewall, routes and resolver are not touched.
+# Secrets and host-specific values come from tailscale-gateway.env (sops) through "make up". Do not run a bare "docker compose up".
+services:
+  dns:
+    image: adguard/dnsproxy:v0.86.0
+    container_name: tailscale-gateway-dns
+    restart: unless-stopped
+    user: "65534:65534"
+    command:
+      - --config-path=/opt/dnsproxy/config.yaml
+      - "--upstream=${DOH_UPSTREAM:?run make up, DOH_UPSTREAM comes from tailscale-gateway.env}"
+    volumes:
+      - ./config/dns-proxy.conf:/opt/dnsproxy/config.yaml:ro
+    sysctls:
+      net.ipv4.ip_unprivileged_port_start: "53"     # lets the unprivileged user bind 53 inside this namespace only
+    networks:
+      gateway:
+        ipv4_address: 10.53.53.53
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    mem_limit: 64m
+    cpus: 0.5
+    pids_limit: 64
+    healthcheck:
+      # Resolves a known-good name through the proxy, which proves the Cloudflare DoH upstream works end to end.
+      test: ["CMD", "nslookup", "wikipedia.org", "127.0.0.1"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+    logging:
+      driver: json-file
+      options: {max-size: "5m", max-file: "2"}
+
+  tailscale:
+    image: tailscale/tailscale:v1.104.7
+    container_name: tailscale-gateway
+    hostname: bnitturi-gateway
+    restart: unless-stopped
+    depends_on:
+      dns:
+        condition: service_started
+    entrypoint: ["/bin/sh", "/gateway/gateway-init.sh"]   # applies the scoped firewall, then execs the image's containerboot
+    environment:
+      TS_HOSTNAME: bnitturi-gateway
+      TS_STATE_DIR: /var/lib/tailscale            # persistent node identity (bind mount below)
+      TS_USERSPACE: "false"                       # kernel networking (needs /dev/net/tun and NET_ADMIN)
+      TS_ACCEPT_DNS: "false"                      # keep our resolv.conf (the dns service); do not take the tailnet DNS config
+      TS_AUTH_ONCE: "true"                        # log in only when the persisted state is not already authenticated
+      TS_EXTRA_ARGS: "--advertise-exit-node --ssh=false --accept-routes=false"
+      TS_AUTHKEY: ${TS_AUTHKEY:-}                 # optional; empty = the login URL is printed in the logs (make login-url)
+      TS_ENABLE_HEALTH_CHECK: "true"
+      TS_LOCAL_ADDR_PORT: "127.0.0.1:9002"        # health endpoint on loopback inside this namespace only
+      TS_DEBUG_FIREWALL_MODE: nftables            # this kernel has no legacy xtables; our rules use iptables-nft too
+      GW_DNS_IP: 10.53.53.53
+      GW_HOST_IPV4: "${HOST_PUBLIC_IPV4:?run make up, HOST_PUBLIC_IPV4 comes from tailscale-gateway.env}"
+    volumes:
+      - /home/bharani/container-data/tailscale-gateway/tailscale:/var/lib/tailscale
+      - ./config/gateway-init.sh:/gateway/gateway-init.sh:ro
+      - ./config/container-health.sh:/gateway/container-health.sh:ro
+      - ./config/resolv.conf:/etc/resolv.conf:ro      # the node's own resolver = the dns service (no Docker DNS, no host resolver)
+    devices:
+      - /dev/net/tun:/dev/net/tun
+    cap_drop: [ALL]
+    cap_add: [NET_ADMIN, NET_RAW]
+    security_opt: ["no-new-privileges:true"]
+    sysctls:
+      net.ipv4.ip_forward: "1"                     # namespaced: affects this container only, not the host
+      net.ipv6.conf.all.forwarding: "1"            # set so tailscaled does not warn; IPv6 forwarding is rejected by the firewall
+    read_only: true
+    tmpfs:
+      - /tmp
+      - /var/run/tailscale
+    networks:
+      gateway:
+        ipv4_address: 10.53.53.2
+    mem_limit: 256m
+    cpus: 1
+    pids_limit: 128
+    healthcheck:
+      test: ["CMD", "/bin/sh", "/gateway/container-health.sh"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    logging:
+      driver: json-file
+      options: {max-size: "10m", max-file: "3"}
+
+networks:
+  gateway:
+    name: tailscale-gateway
+    driver: bridge
+    enable_ipv6: false
+    driver_opts:
+      com.docker.network.bridge.name: br-tsgateway
+    ipam:
+      config:
+        - subnet: 10.53.53.0/24
+          gateway: 10.53.53.1

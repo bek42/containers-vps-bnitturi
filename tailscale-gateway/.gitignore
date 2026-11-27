@@ -1,0 +1,4 @@
+# Runtime state lives in ~/container-data/tailscale-gateway (never here). Never commit plaintext env files or auth keys.
+.env
+*.env.dec
+authkey*
