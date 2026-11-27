@@ -41,7 +41,7 @@ services:
       - /run/aw:size=1m,uid=1001,mode=700                       # the OpenAI key is placed here at start and removed from the environment
       - /opt/agentwatch/quartz/quartz/.quartz-cache:size=256m,uid=1001
     environment:
-      AW_STANDBY: "1"                # 1 = up, signed in and inspectable, but runs no jobs and no worker. Set "0" to go live (see README).
+      AW_STANDBY: "0"                # 1 = up but runs no jobs and no worker (maintenance). 0 = live.
       AUTO_PUBLISH: "1"              # 0 = hold drafts for manual approval
       DAILY_BUDGET_USD: "5"          # API-equivalent workload control for the research pipeline. NOT the subscription allowance.
       INTERACTIVE_BUDGET_USD: "4"    # same, for chat and on-demand episodes
