@@ -1,4 +1,4 @@
-.PHONY: up down restart ps logs edit login-url status test backup restore rollback pull
+.PHONY: up down restart ps logs edit login status test backup restore rollback pull
 
 DATA := $(HOME)/container-data/tailscale-gateway
 ENV  := tailscale-gateway.env
@@ -25,8 +25,8 @@ logs:
 edit:
 	sops edit $(ENV)
 
-login-url:     ## one-time (or after logout): print the Tailscale login URL for node bnitturi-gateway
-	@docker logs tailscale-gateway 2>&1 | grep -o 'https://login.tailscale.com/[^ ]*' | tail -1 || echo "no login URL (already logged in?)"
+login:         ## one-time (or after logout/machine deletion): prints a login URL, waits up to 15 min for approval, then starts
+	$(DC) 'scripts/login.sh'
 
 status:        ## health summary (no browsing data)
 	scripts/healthcheck.sh

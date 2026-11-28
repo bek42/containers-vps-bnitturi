@@ -54,7 +54,7 @@ services:
       TS_ACCEPT_DNS: "false"                      # keep our resolv.conf (the dns service); do not take the tailnet DNS config
       TS_AUTH_ONCE: "true"                        # log in only when the persisted state is not already authenticated
       TS_EXTRA_ARGS: "--advertise-exit-node --ssh=false --accept-routes=false"
-      TS_AUTHKEY: ${TS_AUTHKEY:-}                 # optional; empty = the login URL is printed in the logs (make login-url)
+      TS_AUTHKEY: ${TS_AUTHKEY:-}                 # optional; empty = interactive one-time login with "make login"
       TS_ENABLE_HEALTH_CHECK: "true"
       TS_LOCAL_ADDR_PORT: "127.0.0.1:9002"        # health endpoint on loopback inside this namespace only
       TS_DEBUG_FIREWALL_MODE: nftables            # this kernel has no legacy xtables; our rules use iptables-nft too
@@ -76,8 +76,8 @@ services:
     read_only: true
     tmpfs:
       - /tmp
-      - /var/run/tailscale
-      - /root/.cache                               # tailscaled log cache (read-only root filesystem)
+      - /run                                       # tailscaled socket and the xtables lock (/var/run -> /run)
+      - /root/.cache                              # tailscaled log cache (read-only root filesystem)
     networks:
       gateway:
         ipv4_address: 10.53.53.2

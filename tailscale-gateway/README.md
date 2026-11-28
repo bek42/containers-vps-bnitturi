@@ -12,8 +12,9 @@ Data: `~/container-data/tailscale-gateway/` = `tailscale/` (node state, root-own
 Secrets: `tailscale-gateway.env` (sops: DoH location URL, host IPv4, optional auth key). This repository is public; never put them anywhere else.
 
 ```
-make up          install/start (idempotent); prints the one-time login URL      make test      server-side acceptance tests
+make up          install/start (idempotent)                                  make test      server-side acceptance tests
 make status      health summary                                                 make logs | ps | restart | down
+make login       one-time Tailscale login of bnitturi-gateway (prints a URL, waits up to 15 min, then starts the node)
 make backup      node identity snapshot      make restore FILE=...               make rollback  remove the gateway (state kept)
 ```
 

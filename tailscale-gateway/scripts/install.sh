@@ -17,16 +17,20 @@ fi
 
 scripts/validate.sh --static
 docker compose pull -q
+if ! scripts/logged-in.sh; then
+  # Not logged in yet: start only the forwarder. Starting the node now would loop (the image's login wait is 60 s).
+  docker compose up -d --remove-orphans dns
+  docker compose stop tailscale >/dev/null 2>&1 || true
+  echo "Node bnitturi-gateway is not logged in. Run: make login"
+  docker compose ps; exit 0
+fi
 docker compose up -d --remove-orphans
-for i in $(seq 1 20); do
-  st=$(docker inspect -f '{{.State.Status}}' tailscale-gateway 2>/dev/null || true)
-  [ "$st" = running ] && break; sleep 2
+for _ in $(seq 1 30); do
+  docker exec tailscale-gateway tailscale status --json 2>/dev/null | grep -q '"BackendState": "Running"' && break; sleep 2
 done
-sleep 5
 if docker exec tailscale-gateway tailscale status --json 2>/dev/null | grep -q '"BackendState": "Running"'; then
   echo "tailscale-gateway is logged in and running."
 else
-  url=$(docker logs tailscale-gateway 2>&1 | grep -o 'https://login.tailscale.com/[^ ]*' | tail -1 || true)
-  echo "Node bnitturi-gateway needs a one-time login. Open: ${url:-<run make login-url in a few seconds>}"
+  echo "tailscale-gateway did not reach Running; see make logs" >&2
 fi
 docker compose ps
