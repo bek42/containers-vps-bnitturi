@@ -31,7 +31,8 @@ check V8 "public IPv4 does not answer DNS" bash -c 'out=$(dig +time=2 +tries=1 w
 check V9 "gateway runs least-privilege" bash -c 'docker inspect -f "{{.Name}} priv={{.HostConfig.Privileged}} ro={{.HostConfig.ReadonlyRootfs}} capadd={{.HostConfig.CapAdd}} capdrop={{.HostConfig.CapDrop}} user={{.Config.User}}" tailscale-gateway tailscale-gateway-dns | tee /dev/stderr | grep -q "priv=true" && exit 1 || true'
 if [ "$MODE" = "--restart" ]; then
   before=$(docker exec tailscale-gateway tailscale status --json | jq -r .Self.ID)
-  docker compose restart tailscale >/dev/null 2>&1; sleep 20
+  docker compose restart tailscale >/dev/null 2>&1
+  for _ in $(seq 1 40); do [ "$(docker inspect -f "{{.State.Health.Status}}" tailscale-gateway)" = healthy ] && break; sleep 3; done
   check V10 "node identity persists across restart" bash -c "after=\$(docker exec tailscale-gateway tailscale status --json | jq -r .Self.ID); echo \"before=$before after=\$after\"; [ \"$before\" = \"\$after\" ]"
 fi
 

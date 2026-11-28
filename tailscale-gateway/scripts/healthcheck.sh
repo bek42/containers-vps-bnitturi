@@ -15,7 +15,7 @@ if [ -n "$st" ]; then
 else echo "tailscale: unavailable"; rc=1; fi
 adv=$(docker exec tailscale-gateway tailscale debug prefs 2>/dev/null | jq -r '.AdvertiseRoutes // [] | join(",")')
 echo "advertised routes: ${adv:-none}"; [[ "$adv" == *0.0.0.0/0* ]] || rc=1
-a=$(docker exec tailscale-gateway nslookup wikipedia.org 10.53.53.53 2>/dev/null | awk '/^Address/ && !/#53/ {print $2; exit}')
+a=$(docker exec tailscale-gateway nslookup wikipedia.org 10.53.53.53 2>/dev/null | awk '/^Address/ && $2 !~ /[:#]53$/ {print $2; exit}')
 echo "DoH via forwarder (wikipedia.org): ${a:-FAILED}"; [ -n "$a" ] || rc=1
 docker stats --no-stream --format '{{.Name}}: cpu {{.CPUPerc}} mem {{.MemUsage}}' tailscale-gateway tailscale-gateway-dns
 echo "data dir: $(du -sh "$DATA" 2>/dev/null | cut -f1)  disk free: $(df -h --output=avail "$HOME" | tail -1 | tr -d ' ')"
