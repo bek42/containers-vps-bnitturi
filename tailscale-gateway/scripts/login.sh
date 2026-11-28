@@ -36,6 +36,7 @@ for _ in $(seq 1 180); do
   if docker exec "$NAME" tailscale --socket="$SOCK" status --json 2>/dev/null | grep -q '"BackendState": "Running"'; then
     echo "Logged in: $(docker exec "$NAME" tailscale --socket="$SOCK" ip -4)"
     docker stop -t 10 "$NAME" >/dev/null   # graceful stop so the state is flushed
+    docker rm "$NAME" >/dev/null; trap - EXIT
     echo "Starting the gateway with the new identity."
     exec scripts/install.sh
   fi

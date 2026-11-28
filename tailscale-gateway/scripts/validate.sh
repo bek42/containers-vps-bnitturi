@@ -20,7 +20,7 @@ check S5 "forwarder has one upstream, no fallback" bash -c '! grep -qE "^upstrea
 [ "$MODE" = "--static" ] && { [ $FAILS = 0 ]; exit; }
 
 # ---------------- VPS and containers ----------------
-check V1 "other services still running" bash -c 'bad=$(docker ps -a --filter status=exited --filter status=restarting --format "{{.Names}}" | grep -v "^tailscale-gateway" || true); [ -z "$bad" ] && echo "$(docker ps -q | wc -l) containers running, none exited" || { echo "not running: $bad"; exit 1; }'
+check V1 "other services still running" bash -c 'bad=$( { docker ps -a --filter status=restarting --format "{{.Names}}"; docker ps -a --filter status=exited --format "{{.Names}} {{.Status}}" | grep -v "Exited (0)" | cut -d" " -f1; } | grep -v "^tailscale-gateway" || true); [ -z "$bad" ] && echo "$(docker ps -q | wc -l) containers running, none failed or restarting" || { echo "failed or restarting: $bad"; exit 1; }'
 check V2 "host Tailscale (bnitturi) still connected" bash -c 'tailscale status --json | jq -e ".BackendState==\"Running\"" >/dev/null && tailscale ip -4'
 check V3 "gateway node logged in" bash -c 'docker exec tailscale-gateway tailscale status --json | jq -er "select(.BackendState==\"Running\") | \"\(.Self.HostName) \(.Self.TailscaleIPs|join(\" \"))\""'
 check V4 "exit node advertised (IPv4 and IPv6 default routes)" bash -c 'docker exec tailscale-gateway tailscale debug prefs | jq -er ".AdvertiseRoutes | select(index(\"0.0.0.0/0\") and index(\"::/0\")) | join(\",\")"'
@@ -36,7 +36,7 @@ if [ "$MODE" = "--restart" ]; then
 fi
 
 # ---------------- DNS through the forwarder (as the gateway serves exit-node clients) ----------------
-q() { docker exec tailscale-gateway nslookup -type="$1" "$2" 10.53.53.53 2>/dev/null | awk '/^Address/ && !/#53/ {print $2}' | head -2 | paste -sd,; }
+q() { docker exec tailscale-gateway nslookup -type="$1" "$2" 10.53.53.53 2>/dev/null | awk '/^Address/ && $2 !~ /^10\.53\.53\.53(:|#)53$/ {print $2}' | head -2 | paste -sd,; }
 allow() { local a; a=$(q A "$1"); echo "$1 -> $a"; [ -n "$a" ] && [ "$a" != 0.0.0.0 ]; }
 block() { local a b; a=$(q A "$1"); b=$(q AAAA "$1"); echo "$1 A=$a AAAA=$b"; [ "$a" = 0.0.0.0 ] && [ "$b" = "::" ]; }
 check D1 "wikipedia.org resolves" allow wikipedia.org
@@ -45,7 +45,7 @@ check D3 "google.com resolves" allow google.com
 check D4 "chess.com blocked by Gateway policy (0.0.0.0 / ::)" block chess.com
 check D5 "www.chess.com blocked" block www.chess.com
 check D6 "lichess.org blocked" block lichess.org
-check D7 "block is Cloudflare's decision, not a failure (same name resolves unfiltered)" bash -c 'u=$(dig +short +time=3 chess.com @1.1.1.1 | head -1); f=$(docker exec tailscale-gateway nslookup chess.com 10.53.53.53 | awk "/^Address/ && !/#53/ {print \$2; exit}"); echo "unfiltered=$u gateway=$f"; [ -n "$u" ] && [ "$u" != 0.0.0.0 ] && [ "$f" = 0.0.0.0 ]'
+check D7 "block is Cloudflare's decision, not a failure (same name resolves unfiltered)" bash -c 'u=$(dig +short +time=3 chess.com @1.1.1.1 | head -1); f=$(docker exec tailscale-gateway nslookup chess.com 10.53.53.53 | awk "/^Address/ && \$2 !~ /:53\$/ {print \$2; exit}"); echo "unfiltered=$u gateway=$f"; [ -n "$u" ] && [ "$u" != 0.0.0.0 ] && [ "$f" = 0.0.0.0 ]'
 check D8 "forwarder upstream is the location DoH endpoint only" bash -c 'docker inspect -f "{{join .Args \" \"}}" tailscale-gateway-dns | grep -oE -- "--upstream=https://[a-z0-9]+\.cloudflare-gateway\.com/dns-query" | sed -E "s#//[a-z0-9]+\.#//<location>.#"'
 check D9 "gateway node's own resolver is the forwarder" bash -c 'docker exec tailscale-gateway cat /etc/resolv.conf | grep -E "^nameserver" | paste -sd" " | tee /dev/stderr | grep -qx "nameserver 10.53.53.53"'
 
