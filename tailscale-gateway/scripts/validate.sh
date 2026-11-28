@@ -46,7 +46,7 @@ check D3 "google.com resolves" allow google.com
 check D4 "chess.com blocked by Gateway policy (0.0.0.0 / ::)" block chess.com
 check D5 "www.chess.com blocked" block www.chess.com
 check D6 "lichess.org blocked" block lichess.org
-check D7 "block is Cloudflare's decision, not a failure (same name resolves unfiltered)" bash -c 'u=$(dig +short +time=3 chess.com @1.1.1.1 | head -1); f=$(docker exec tailscale-gateway nslookup chess.com 10.53.53.53 | awk "/^Address/ && \$2 !~ /:53\$/ {print \$2; exit}"); echo "unfiltered=$u gateway=$f"; [ -n "$u" ] && [ "$u" != 0.0.0.0 ] && [ "$f" = 0.0.0.0 ]'
+check D7 "block is Cloudflare's decision, not a failure (same name resolves unfiltered)" bash -c 'u=$(dig +short +time=3 chess.com @1.1.1.1 | head -1); f=$(docker exec tailscale-gateway nslookup -type=a chess.com 10.53.53.53 | awk "/^Address/ && \$2 !~ /:53\$/ {print \$2; exit}"); echo "unfiltered=$u gateway=$f"; [ -n "$u" ] && [ "$u" != 0.0.0.0 ] && [ "$f" = 0.0.0.0 ]'
 check D8 "forwarder upstream is the location DoH endpoint only" bash -c 'docker inspect -f "{{join .Args \" \"}}" tailscale-gateway-dns | grep -oE -- "--upstream=https://[a-z0-9]+\.cloudflare-gateway\.com/dns-query" | sed -E "s#//[a-z0-9]+\.#//<location>.#"'
 check D9 "gateway node's own resolver is the forwarder" bash -c 'docker exec tailscale-gateway cat /etc/resolv.conf | grep -E "^nameserver" | paste -sd" " | tee /dev/stderr | grep -qx "nameserver 10.53.53.53"'
 
